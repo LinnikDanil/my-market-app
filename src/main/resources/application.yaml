@@ -1,3 +1,12 @@
 spring:
   application:
     name: my-market-app
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+logging:
+  level:
+    ru:
+      practicum: ${LOGGING_PRACTICUM_LEVEL}
