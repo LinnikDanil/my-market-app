@@ -2,6 +2,7 @@ package ru.practicum.market.web.mapper;
 
 import lombok.experimental.UtilityClass;
 import ru.practicum.market.domain.model.Item;
+import ru.practicum.market.web.dto.CartResponseDto;
 import ru.practicum.market.web.dto.ItemResponseDto;
 
 import java.util.ArrayList;
@@ -11,12 +12,6 @@ import java.util.List;
 public class ItemMapper {
 
     private static final ItemResponseDto MOCK_ITEM = new ItemResponseDto(-1, null, null, null, 0, 0);
-
-    public static List<ItemResponseDto> toItemResponseDtos(List<Item> items) {
-        return items.stream()
-                .map(ItemMapper::toItemResponseDto)
-                .toList();
-    }
 
     public static ItemResponseDto toItemResponseDto(Item item) {
         return new ItemResponseDto(
@@ -48,5 +43,21 @@ public class ItemMapper {
         }
 
         return itemRows;
+    }
+
+    public static CartResponseDto toCart(List<Item> itemsInCart) {
+        return new CartResponseDto(toItemResponseDtos(itemsInCart), calculateTotalSum(itemsInCart));
+    }
+
+    private static long calculateTotalSum(List<Item> itemsInCart) {
+        return itemsInCart.stream()
+                .map(Item::getPrice)
+                .reduce(0L, Long::sum);
+    }
+
+    private static List<ItemResponseDto> toItemResponseDtos(List<Item> items) {
+        return items.stream()
+                .map(ItemMapper::toItemResponseDto)
+                .toList();
     }
 }

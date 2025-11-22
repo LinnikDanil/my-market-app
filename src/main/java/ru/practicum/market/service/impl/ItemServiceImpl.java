@@ -13,12 +13,15 @@ import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.ItemService;
+import ru.practicum.market.web.dto.CartResponseDto;
 import ru.practicum.market.web.dto.ItemResponseDto;
 import ru.practicum.market.web.dto.ItemsResponseDto;
 import ru.practicum.market.web.dto.Paging;
 import ru.practicum.market.web.dto.enums.CartAction;
 import ru.practicum.market.web.dto.enums.SortMethod;
 import ru.practicum.market.web.mapper.ItemMapper;
+
+import java.util.List;
 
 import static ru.practicum.market.web.dto.enums.SortMethod.ALPHA;
 import static ru.practicum.market.web.dto.enums.SortMethod.PRICE;
@@ -56,6 +59,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ItemResponseDto getItem(long id) {
         return itemRepository.findById(id)
                 .map(ItemMapper::toItemResponseDto)
@@ -78,6 +82,14 @@ public class ItemServiceImpl implements ItemService {
         } catch (DataIntegrityViolationException exception) {
             throw new ItemCountInCartException("Count items with id = %d in cart should be greater 0.".formatted(id));
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CartResponseDto getCart() {
+        List<Item> itemsInCart = itemRepository.findByCountGreaterThan(0);
+
+        return ItemMapper.toCart(itemsInCart);
     }
 
     private Paging convertToPaging(Page<Item> page) {

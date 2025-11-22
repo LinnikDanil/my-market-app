@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import ru.practicum.market.domain.model.Item;
 
+import java.util.List;
+
 public interface ItemRepository extends JpaRepository<Item, Long> {
 
     Page<Item> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
@@ -22,4 +24,6 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     @Modifying
     @Query("UPDATE Item i set i.count = i.count - 1 where i.id = :id")
     int decrementItemCount(long id);
+
+    List<Item> findByCountGreaterThan(int countIsGreaterThan);
 }

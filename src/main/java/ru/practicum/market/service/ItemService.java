@@ -1,5 +1,6 @@
 package ru.practicum.market.service;
 
+import ru.practicum.market.web.dto.CartResponseDto;
 import ru.practicum.market.web.dto.ItemResponseDto;
 import ru.practicum.market.web.dto.ItemsResponseDto;
 import ru.practicum.market.web.dto.enums.CartAction;
@@ -11,4 +12,6 @@ public interface ItemService {
     ItemResponseDto getItem(long id);
 
     void updateItemsCountInCart(long id, CartAction action);
+
+    CartResponseDto getCart();
 }
