@@ -45,7 +45,7 @@ public class ItemController {
     }
 
     @PostMapping("/items")
-    public String updateItemsCountInCart(
+    public String updateItemsCountInCartForItems(
             @RequestParam long id,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) SortMethod sort,
@@ -56,6 +56,13 @@ public class ItemController {
         itemService.updateItemsCountInCart(id, action);
         return "redirect:/items?search=%s&sort=%s&pageNumber=%d&pageSize=%d"
                 .formatted(search, sort, pageNumber, pageSize);
+    }
+
+    @PostMapping("/items/{id}")
+    public String updateItemsCountInCartForItem(@PathVariable long id, @RequestParam CartAction action, Model model) {
+        itemService.updateItemsCountInCart(id, action);
+
+        return getItem(id, model);
     }
 
     private SortMethod checkAndGetSortMethod(SortMethod sort) {
