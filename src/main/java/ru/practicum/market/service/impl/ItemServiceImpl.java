@@ -13,6 +13,7 @@ import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.ItemService;
+import ru.practicum.market.web.dto.ItemResponseDto;
 import ru.practicum.market.web.dto.ItemsResponseDto;
 import ru.practicum.market.web.dto.Paging;
 import ru.practicum.market.web.dto.enums.CartAction;
@@ -52,6 +53,13 @@ public class ItemServiceImpl implements ItemService {
         var itemRows = ItemMapper.toItemRows(items.getContent(), ITEMS_IN_ROW);
 
         return new ItemsResponseDto(itemRows, search, sortMethod, convertToPaging(items));
+    }
+
+    @Override
+    public ItemResponseDto getItem(long id) {
+        return itemRepository.findById(id)
+                .map(ItemMapper::toItemResponseDto)
+                .orElseThrow(() -> new ItemNotFoundException("Item with id = %d not found.".formatted(id)));
     }
 
     @Override
