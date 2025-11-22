@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import ru.practicum.market.service.ItemService;
-import ru.practicum.market.web.dto.CartResponseDto;
+import ru.practicum.market.web.dto.enums.CartAction;
 
 @Controller
 @RequestMapping("/cart/items")
@@ -26,4 +28,10 @@ public class CartController {
         return "cart";
     }
 
+    @PostMapping
+    public String updateItemsCountInCart(@RequestParam long id, @RequestParam CartAction action, Model model) {
+        itemService.updateItemsCountInCart(id, action);
+
+        return getCart(model);
+    }
 }
