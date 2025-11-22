@@ -24,6 +24,12 @@ public class ItemMapper {
         );
     }
 
+    public static List<ItemResponseDto> toItemResponseDtos(List<Item> items) {
+        return items.stream()
+                .map(ItemMapper::toItemResponseDto)
+                .toList();
+    }
+
     public static List<List<ItemResponseDto>> toItemRows(List<Item> items, int rowSize) {
         List<List<ItemResponseDto>> itemRows = new ArrayList<>();
         var itemDtos = toItemResponseDtos(items);
@@ -55,9 +61,4 @@ public class ItemMapper {
                 .reduce(0L, Long::sum);
     }
 
-    private static List<ItemResponseDto> toItemResponseDtos(List<Item> items) {
-        return items.stream()
-                .map(ItemMapper::toItemResponseDto)
-                .toList();
-    }
 }
