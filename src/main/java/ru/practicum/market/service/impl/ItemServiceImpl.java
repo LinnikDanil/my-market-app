@@ -1,16 +1,21 @@
 package ru.practicum.market.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import ru.practicum.market.domain.exception.ItemCountInCartException;
+import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.web.dto.ItemsResponseDto;
 import ru.practicum.market.web.dto.Paging;
+import ru.practicum.market.web.dto.enums.CartAction;
 import ru.practicum.market.web.dto.enums.SortMethod;
 import ru.practicum.market.web.mapper.ItemMapper;
 
@@ -26,6 +31,7 @@ public class ItemServiceImpl implements ItemService {
     private final ItemRepository itemRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public ItemsResponseDto getItems(String search, SortMethod sortMethod, int pageNumber, int pageSize) {
 
         var sort = switch (sortMethod) {
@@ -46,6 +52,24 @@ public class ItemServiceImpl implements ItemService {
         var itemRows = ItemMapper.toItemRows(items.getContent(), ITEMS_IN_ROW);
 
         return new ItemsResponseDto(itemRows, search, sortMethod, convertToPaging(items));
+    }
+
+    @Override
+    @Transactional
+    public void updateItemsCountInCart(long id, CartAction action) {
+        try {
+            var rowsUpdated = switch (action) {
+                case PLUS -> itemRepository.incrementItemCount(id);
+                case MINUS -> itemRepository.decrementItemCount(id);
+            };
+
+            if (rowsUpdated == 0) {
+                throw new ItemNotFoundException("Item with id = %d not found.".formatted(id));
+            }
+
+        } catch (DataIntegrityViolationException exception) {
+            throw new ItemCountInCartException("Count items with id = %d in cart should be greater 0.".formatted(id));
+        }
     }
 
     private Paging convertToPaging(Page<Item> page) {
