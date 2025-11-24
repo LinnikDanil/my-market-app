@@ -1,6 +1,7 @@
 package ru.practicum.market.web.mapper;
 
 import lombok.experimental.UtilityClass;
+import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.domain.model.Order;
 import ru.practicum.market.web.dto.OrderResponseDto;
 
@@ -21,5 +22,16 @@ public class OrderMapper {
         return orders.stream()
                 .map(OrderMapper::toOrderResponseDto)
                 .toList();
+    }
+
+    public static Order toOrder(List<Item> items) {
+        var totalSum = items.stream()
+                .map(i -> i.getCount() * i.getPrice())
+                .reduce(0L, Long::sum);
+
+        return Order.builder()
+                .items(items)
+                .totalSum(totalSum)
+                .build();
     }
 }
