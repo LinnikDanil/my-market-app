@@ -1,0 +1,79 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="create_order_item_table" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <tableExists tableName="order_item"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="order_item">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="order_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="item_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="price_at_order" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE order_item ADD CONSTRAINT quantity_check CHECK (quantity >= 0);
+            ALTER TABLE order_item ADD CONSTRAINT price_at_order_check CHECK (price_at_order >= 0);
+        </sql>
+
+        <rollback>
+            <dropTable tableName="order_item" cascadeConstraints="true"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create_order_item_foreign_key_order" author="DLinnik">
+        <preConditions>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_order_item_order"/>
+            </not>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="order_item"
+                                 baseColumnNames="order_id"
+                                 constraintName="fk_order_item_order"
+                                 referencedTableName="order"
+                                 referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="order_item" constraintName="fk_order_item_order"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create_order_item_foreign_key_item" author="DLinnik">
+        <preConditions>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_order_item_item"/>
+            </not>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="order_item"
+                                 baseColumnNames="item_id"
+                                 constraintName="fk_order_item_item"
+                                 referencedTableName="item"
+                                 referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="order_item" constraintName="fk_order_item_item"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -36,6 +36,4 @@ public class Item {
     @Column(nullable = false)
     long price;
 
-    @Column(nullable = false)
-    int count;
 }

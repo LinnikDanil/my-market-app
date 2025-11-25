@@ -5,32 +5,30 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDateTime;
-
 @Entity
-@Table
+@Table(name = "cart_item")
 @Data
-@Builder
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Order {
-
+public class CartItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     long id;
 
-    @Column(name = "total_sum", nullable = false)
-    long totalSum;
+    @OneToOne
+    @JoinColumn(name = "item_id", referencedColumnName = "id")
+    Item item;
 
-    @Column(name = "created_at", nullable = false)
-    LocalDateTime createdAt;
+    @Column(nullable = false)
+    int quantity;
 }

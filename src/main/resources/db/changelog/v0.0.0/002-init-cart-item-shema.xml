@@ -1,0 +1,54 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="create_cart_item_table" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <tableExists tableName="cart_item"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="cart_item">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="item_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE cart_item ADD CONSTRAINT quantity_check CHECK (quantity >= 0);
+        </sql>
+
+        <rollback>
+            <dropTable tableName="cart_item" cascadeConstraints="true"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create_cart_item_foreign_key_item" author="DLinnik">
+        <preConditions>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_cart_item_item"/>
+            </not>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="cart_item"
+                                 baseColumnNames="item_id"
+                                 constraintName="fk_cart_item_item"
+                                 referencedTableName="item"
+                                 referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="cart_item" constraintName="fk_cart_item_item"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

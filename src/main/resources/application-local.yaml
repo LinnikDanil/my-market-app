@@ -1,4 +1,5 @@
-SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/postgres?currentSchema=market_app
+DATASOURCE_SCHEMA_NAME: market_app
+SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/postgres?currentSchema=${DATASOURCE_SCHEMA_NAME}
 SPRING_DATASOURCE_USERNAME: postgres
 SPRING_DATASOURCE_PASSWORD: postgres
 
