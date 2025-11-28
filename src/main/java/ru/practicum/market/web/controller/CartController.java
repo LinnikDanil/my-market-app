@@ -1,6 +1,7 @@
 package ru.practicum.market.web.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,13 +14,13 @@ import ru.practicum.market.web.dto.enums.CartAction;
 @Controller
 @RequestMapping("/cart/items")
 @RequiredArgsConstructor
+@Log4j2
 public class CartController {
 
     private final ItemService itemService;
 
     @GetMapping
     public String getCart(Model model) {
-
         var cart = itemService.getCart();
 
         model.addAttribute("items", cart.items());
@@ -30,6 +31,8 @@ public class CartController {
 
     @PostMapping
     public String updateItemsCountInCart(@RequestParam long id, @RequestParam CartAction action, Model model) {
+        log.debug("Update items count in cart with id {} action {}", id, action);
+
         itemService.updateItemsCountInCart(id, action);
 
         return getCart(model);

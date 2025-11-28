@@ -25,7 +25,8 @@ public class ItemController {
             @RequestParam(defaultValue = "5") int pageSize,
             Model model
     ) {
-        var itemsDto = itemService.getItems(search, checkAndGetSortMethod(sort), pageNumber, pageSize);
+        var sortMethod = sort == null ? SortMethod.NO : sort;
+        var itemsDto = itemService.getItems(search, sortMethod, pageNumber, pageSize);
 
         model.addAttribute("items", itemsDto.items());
         model.addAttribute("search", itemsDto.search());
@@ -65,7 +66,4 @@ public class ItemController {
         return getItem(id, model);
     }
 
-    private SortMethod checkAndGetSortMethod(SortMethod sort) {
-        return sort == null ? SortMethod.NO : sort;
-    }
 }

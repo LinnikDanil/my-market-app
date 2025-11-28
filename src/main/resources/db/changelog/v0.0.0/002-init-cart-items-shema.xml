@@ -5,19 +5,19 @@
           http://www.liquibase.org/xml/ns/dbchangelog
           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
 
-    <changeSet id="create_cart_item_table" author="DLinnik">
+    <changeSet id="create_cart_items_table" author="DLinnik">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
-                <tableExists tableName="cart_item"/>
+                <tableExists tableName="cart_items"/>
             </not>
         </preConditions>
 
-        <createTable tableName="cart_item">
+        <createTable tableName="cart_items">
             <column name="id" type="bigint" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
             <column name="item_id" type="bigint">
-                <constraints nullable="false"/>
+                <constraints nullable="false" unique="true"/>
             </column>
             <column name="quantity" type="int">
                 <constraints nullable="false"/>
@@ -25,29 +25,29 @@
         </createTable>
 
         <sql>
-            ALTER TABLE cart_item ADD CONSTRAINT quantity_check CHECK (quantity >= 0);
+            ALTER TABLE cart_items ADD CONSTRAINT quantity_check CHECK (quantity >= 0);
         </sql>
 
         <rollback>
-            <dropTable tableName="cart_item" cascadeConstraints="true"/>
+            <dropTable tableName="cart_items" cascadeConstraints="true"/>
         </rollback>
     </changeSet>
 
-    <changeSet id="create_cart_item_foreign_key_item" author="DLinnik">
+    <changeSet id="create_cart_items_foreign_key_items" author="DLinnik">
         <preConditions>
             <not>
-                <foreignKeyConstraintExists foreignKeyName="fk_cart_item_item"/>
+                <foreignKeyConstraintExists foreignKeyName="fk_cart_items_item"/>
             </not>
         </preConditions>
 
-        <addForeignKeyConstraint baseTableName="cart_item"
+        <addForeignKeyConstraint baseTableName="cart_items"
                                  baseColumnNames="item_id"
-                                 constraintName="fk_cart_item_item"
-                                 referencedTableName="item"
+                                 constraintName="fk_cart_items_item"
+                                 referencedTableName="items"
                                  referencedColumnNames="id"/>
 
         <rollback>
-            <dropForeignKeyConstraint baseTableName="cart_item" constraintName="fk_cart_item_item"/>
+            <dropForeignKeyConstraint baseTableName="cart_items" constraintName="fk_cart_items_items"/>
         </rollback>
     </changeSet>
 

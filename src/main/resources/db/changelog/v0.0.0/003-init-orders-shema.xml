@@ -5,37 +5,31 @@
           http://www.liquibase.org/xml/ns/dbchangelog
           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
 
-    <changeSet id="create_item_table" author="DLinnik">
+    <changeSet id="create_order_table" author="DLinnik">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
-                <tableExists tableName="item"/>
+                <tableExists tableName="orders"/>
             </not>
         </preConditions>
 
-        <createTable tableName="item">
+        <createTable tableName="orders">
             <column name="id" type="bigint" autoIncrement="true">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
-            <column name="title" type="varchar(255)">
+            <column name="total_sum" type="bigint">
                 <constraints nullable="false"/>
             </column>
-            <column name="description" type="text">
-                <constraints nullable="false"/>
-            </column>
-            <column name="img_path" type="varchar(255)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="price" type="bigint">
+            <column name="created_at" type="timestamp">
                 <constraints nullable="false"/>
             </column>
         </createTable>
 
         <sql>
-            ALTER TABLE item ADD CONSTRAINT price_check CHECK (price >= 0);
+            ALTER TABLE orders ADD CONSTRAINT total_sum_check CHECK (total_sum >= 0);
         </sql>
 
         <rollback>
-            <dropTable tableName="item" cascadeConstraints="true"/>
+            <dropTable tableName="orders" cascadeConstraints="true"/>
         </rollback>
     </changeSet>
 
