@@ -55,7 +55,7 @@ public class AdminServiceImpl implements AdminService {
     public void uploadImage(long id, MultipartFile image) {
         log.info("Uploading image for itemId={}", id);
         var item = itemRepository.findById(id).orElseThrow(
-                () -> new ItemNotFoundException("Item with id = %d not found!".formatted(id))
+                () -> new ItemNotFoundException(id, "Item with id = %d not found!".formatted(id))
         );
 
         if (image.isEmpty()) {

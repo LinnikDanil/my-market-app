@@ -127,7 +127,7 @@ public class ItemServiceImpl implements ItemService {
     private void decrementItemQuantityInCart(CartItem cartItem, long itemId) {
         log.debug("Decrement item {} in cart", itemId);
         if (cartItem == null) {
-            throw new CartItemNotFoundException("Cart item with id = %d not found.".formatted(itemId));
+            throw new CartItemNotFoundException(itemId, "Cart item with id = %d not found.".formatted(itemId));
         } else {
 
             var itemQuantity = cartItem.getQuantity();
@@ -146,7 +146,7 @@ public class ItemServiceImpl implements ItemService {
     private void deleteItemFromCart(CartItem cartItem, long itemId) {
         log.debug("Deleting item {} from cart", itemId);
         if (cartItem == null) {
-            throw new CartItemNotFoundException("Cart item with id = %d not found.".formatted(itemId));
+            throw new CartItemNotFoundException(itemId, "Cart item with id = %d not found.".formatted(itemId));
         }
         cartItemRepository.delete(cartItem);
         log.info("Item {} has been deleted from cart", itemId);
@@ -154,7 +154,7 @@ public class ItemServiceImpl implements ItemService {
 
     private Item findItem(long id) {
         return itemRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Item with id = %d not found.".formatted(id)));
+                .orElseThrow(() -> new ItemNotFoundException(id, "Item with id = %d not found.".formatted(id)));
     }
 
     private Paging convertToPaging(Page<Item> page) {

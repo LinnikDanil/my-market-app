@@ -39,7 +39,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponseDto getOrder(long id) {
         log.info("Request to fetch order with id={}", id);
         var order = orderRepository.findByIdFetch(id)
-                .orElseThrow(() -> new OrderNotFoundException("Order with id = %d not found.".formatted(id)));
+                .orElseThrow(() -> new OrderNotFoundException(id, "Order with id = %d not found.".formatted(id)));
 
         return OrderMapper.toOrderResponseDto(order);
     }

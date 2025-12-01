@@ -1,7 +1,11 @@
 package ru.practicum.market.domain.exception;
 
-public class CartItemNotFoundException extends RuntimeException {
-    public CartItemNotFoundException(String message) {
-        super(message);
+import lombok.Getter;
+
+@Getter
+public class CartItemNotFoundException extends NotFoundExceptionAbstract {
+
+    public CartItemNotFoundException(Long id, String message) {
+        super(id, message);
     }
 }
