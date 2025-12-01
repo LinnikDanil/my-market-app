@@ -21,7 +21,6 @@ logging:
   level:
     ru:
       practicum: ${LOGGING_PRACTICUM_LEVEL}
-    org.hibernate.SQL: debug
 
 image:
   path: ${IMAGE_PATH}

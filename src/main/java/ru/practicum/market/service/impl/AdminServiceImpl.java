@@ -1,7 +1,7 @@
 package ru.practicum.market.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class AdminServiceImpl implements AdminService {
 
     private final ItemRepository itemRepository;
@@ -53,6 +53,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void uploadImage(long id, MultipartFile image) {
+        log.info("Uploading image for itemId={}", id);
         var item = itemRepository.findById(id).orElseThrow(
                 () -> new ItemNotFoundException("Item with id = %d not found!".formatted(id))
         );
@@ -60,6 +61,8 @@ public class AdminServiceImpl implements AdminService {
         if (image.isEmpty()) {
             throw new ItemImageBadRequest("Image cannot be empty");
         }
+
+        log.debug("Image content type: {} | size: {} bytes", image.getContentType(), image.getSize());
 
         // Директория
         var uploadPath = Paths.get(imagePath);
@@ -86,11 +89,16 @@ public class AdminServiceImpl implements AdminService {
         item.setImgPath("/" + imagePath + "/" + fileName);
         itemRepository.save(item);
 
+        log.info("Image for item {} saved to {}", id, filePath);
+
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<Item> getAllItems() {
-        return itemRepository.findAll(Sort.by(SortMethod.ALPHA.getColumnName()));
+        log.info("Request to fetch all items for admin panel");
+        var items = itemRepository.findAll(Sort.by(SortMethod.ALPHA.getColumnName()));
+        log.debug("Fetched {} items for admin", items.size());
+        return items;
     }
 }
