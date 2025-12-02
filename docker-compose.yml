@@ -1,0 +1,41 @@
+services:
+  # описание контейнера db
+  db:
+    container_name: db
+    # образ, из которого должен быть запущен контейнер
+    image: postgres:17.5
+    restart: always
+    # переменные окружения
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=market
+    ports:
+      - "5433:5432"
+    # volume и связанная с ним директория в контейнере
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  app:
+    container_name: market-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: market-app
+    restart: on-failure
+    environment:
+      - DATASOURCE_SCHEMA_NAME=public
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/market
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - LOGGING_PRACTICUM_LEVEL=DEBUG
+      - SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE=10MB
+      - SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE=10MB
+      - IMAGE_PATH=images
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+volumes:
+  db-data:
