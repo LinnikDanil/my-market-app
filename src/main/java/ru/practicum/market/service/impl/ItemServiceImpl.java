@@ -23,6 +23,8 @@ import ru.practicum.market.web.dto.enums.CartAction;
 import ru.practicum.market.web.dto.enums.SortMethod;
 import ru.practicum.market.web.mapper.ItemMapper;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static ru.practicum.market.web.dto.enums.SortMethod.ALPHA;
@@ -61,15 +63,19 @@ public class ItemServiceImpl implements ItemService {
         }
 
         var items = itemsPage.getContent();
-        var cartItems = cartItemRepository.findByItemIds(items.stream().map(Item::getId).toList());
 
-        log.debug("Fetched {} items, {} related cart items", items.size(), cartItems.size());
+        Map<Long, Integer> itemsQuantity = new HashMap<>();
+        if (!items.isEmpty()) {
+            var cartItems = cartItemRepository.findByItemIds(items.stream().map(Item::getId).toList());
 
-        var itemsQuantity = cartItems.stream()
-                .collect(Collectors.toMap(
-                        ci -> ci.getItem().getId(),
-                        CartItem::getQuantity
-                ));
+            log.debug("Fetched {} items, {} related cart items", items.size(), cartItems.size());
+
+            itemsQuantity = cartItems.stream()
+                    .collect(Collectors.toMap(
+                            ci -> ci.getItem().getId(),
+                            CartItem::getQuantity
+                    ));
+        }
 
         var itemRows = ItemMapper.toItemRows(items, itemsQuantity, ITEMS_IN_ROW);
 

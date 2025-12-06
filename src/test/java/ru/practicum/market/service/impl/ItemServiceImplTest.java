@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -200,7 +201,6 @@ class ItemServiceImplTest {
             var page = new PageImpl<Item>(Collections.emptyList(), pageable, 10);
 
             when(itemRepository.findAll(any(Pageable.class))).thenReturn(page);
-            when(cartItemRepository.findByItemIds(anyList())).thenReturn(Collections.emptyList());
 
             var response = itemService.getItems(null, sortMethod, pageNumber, pageSize);
 
@@ -215,6 +215,8 @@ class ItemServiceImplTest {
             assertThat(responsePaging.pageSize()).isEqualTo(pageSize);
             assertThat(responsePaging.hasNext()).isTrue();
             assertThat(responsePaging.hasPrevious()).isFalse();
+
+            verify(cartItemRepository, never()).findByItemIds(anyList());
         }
     }
 

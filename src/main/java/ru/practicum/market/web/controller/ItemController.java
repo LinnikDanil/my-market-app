@@ -1,8 +1,10 @@
 package ru.practicum.market.web.controller;
 
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +15,7 @@ import ru.practicum.market.web.dto.enums.SortMethod;
 
 @Controller
 @RequiredArgsConstructor
+@Validated
 public class ItemController {
 
     private final ItemService itemService;
@@ -21,8 +24,8 @@ public class ItemController {
     public String getItems(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) SortMethod sort,
-            @RequestParam(defaultValue = "1") int pageNumber,
-            @RequestParam(defaultValue = "5") int pageSize,
+            @RequestParam(defaultValue = "1") @Min(1) int pageNumber,
+            @RequestParam(defaultValue = "5") @Min(1) int pageSize,
             Model model
     ) {
         var sortMethod = sort == null ? SortMethod.NO : sort;
@@ -50,8 +53,8 @@ public class ItemController {
             @RequestParam long id,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) SortMethod sort,
-            @RequestParam(defaultValue = "1") int pageNumber,
-            @RequestParam(defaultValue = "5") int pageSize,
+            @RequestParam(defaultValue = "1") @Min(1) int pageNumber,
+            @RequestParam(defaultValue = "5") @Min(1) int pageSize,
             @RequestParam CartAction action
     ) {
         itemService.updateItemsCountInCart(id, action);

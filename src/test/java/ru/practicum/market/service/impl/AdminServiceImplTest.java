@@ -121,7 +121,8 @@ class AdminServiceImplTest {
             var savedItem = itemCaptor.getValue();
             assertThat(savedItem.getId()).isEqualTo(itemId);
             assertThat(savedItem.getImgPath())
-                    .startsWith("/" + imagePath + "/" + file.getOriginalFilename() + "_");
+                    .startsWith("/" + imagePath + "/")
+                    .endsWith(".png");
 
             var storedFileName = Path.of(savedItem.getImgPath().substring(1));
             assertThat(Files.exists(storedFileName)).isTrue();

@@ -19,7 +19,6 @@ import ru.practicum.market.web.mapper.ExcelMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
@@ -64,33 +63,55 @@ public class AdminServiceImpl implements AdminService {
 
         log.debug("Image content type: {} | size: {} bytes", image.getContentType(), image.getSize());
 
-        // Директория
-        var uploadPath = Paths.get(imagePath);
+        // 1. Базовая директория для загрузки
+        var uploadPath = Paths.get(imagePath).toAbsolutePath().normalize();
 
-        // Создадим, если не существует
         try {
             Files.createDirectories(uploadPath);
         } catch (IOException exception) {
             throw new ItemImageBadRequest("Failed to create upload directory!", exception);
         }
 
-        // Генерируем уникальное имя изображения
-        String fileName = image.getOriginalFilename() + "_" + UUID.randomUUID();
+        // 2. Берём только имя файла без путей
+        var originalFilename = image.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isBlank()) {
+            originalFilename = "";
+        }
 
-        Path filePath = uploadPath.resolve(fileName);
+        // отбросить любые пути
+        var cleanOriginalName = Paths.get(originalFilename).getFileName().toString();
 
-        // Сохраняем изображение
+        // оставляем только расширение
+        var ext = "";
+        int dotIndex = cleanOriginalName.lastIndexOf('.');
+        if (dotIndex != -1 && dotIndex < cleanOriginalName.length() - 1) {
+            ext = cleanOriginalName.substring(dotIndex); // включая точку
+        }
+
+        // 3. Генерируем безопасное имя файла
+        var safeFileName = UUID.randomUUID() + ext;
+
+        // 4. Формируем путь и нормализуем его
+        var filePath = uploadPath.resolve(safeFileName).normalize();
+
+        // 5. Проверяем, что файл всё ещё внутри uploadPath
+        if (!filePath.startsWith(uploadPath)) {
+            // попытка вылезти из директории
+            throw new ItemImageBadRequest("Invalid image path");
+        }
+
+        // 6. Сохраняем изображение
         try (InputStream is = image.getInputStream()) {
             Files.copy(is, filePath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new ItemImageBadRequest("Failed to save image file!", e);
         }
 
-        item.setImgPath("/" + imagePath + "/" + fileName);
+        // 7. Сохраняем относительный путь
+        item.setImgPath("/" + imagePath + "/" + safeFileName);
         itemRepository.save(item);
 
         log.info("Image for item {} saved to {}", id, filePath);
-
     }
 
     @Transactional(readOnly = true)
