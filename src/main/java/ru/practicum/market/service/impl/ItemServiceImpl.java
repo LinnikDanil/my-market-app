@@ -129,7 +129,6 @@ public class ItemServiceImpl implements ItemService {
         if (cartItem == null) {
             throw new CartItemNotFoundException(itemId, "Cart item with id = %d not found.".formatted(itemId));
         } else {
-
             var itemQuantity = cartItem.getQuantity();
             log.debug("Current quantity for item {} is {}", itemId, itemQuantity);
             if (itemQuantity == 1) {
