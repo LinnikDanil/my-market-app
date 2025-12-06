@@ -14,7 +14,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     @Query("""
             SELECT ci
             FROM CartItem ci
-            LEFT JOIN FETCH ci.item i
+            JOIN FETCH ci.item i
             WHERE i.id = :itemId
             """)
     Optional<CartItem> findByItemId(long itemId);
@@ -22,7 +22,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     @Query("""
             SELECT ci
             FROM CartItem ci
-            LEFT JOIN FETCH ci.item i
+            JOIN FETCH ci.item i
             WHERE i.id IN (:itemIds)
             """)
     List<CartItem> findByItemIds(List<Long> itemIds);
@@ -30,7 +30,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     @Query("""
             SELECT ci
             FROM CartItem ci
-            LEFT JOIN FETCH ci.item i
+            JOIN FETCH ci.item i
             """)
     List<CartItem> findAllFetch();
 
