@@ -6,6 +6,7 @@ import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.domain.model.OrderItem;
 import ru.practicum.market.web.dto.CartResponseDto;
 import ru.practicum.market.web.dto.ItemResponseDto;
+import ru.practicum.market.web.dto.ItemShortResponseDto;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,5 +78,15 @@ public class ItemMapper {
                 item.getPrice(),
                 quantity
         );
+    }
+
+    public static List<ItemShortResponseDto> toShortResponseDtos(List<Item> items) {
+        return items.stream()
+                .map(ItemMapper::toShortResponseDto)
+                .toList();
+    }
+
+    private static ItemShortResponseDto toShortResponseDto(Item item) {
+        return new ItemShortResponseDto(item.getId(), item.getTitle());
     }
 }

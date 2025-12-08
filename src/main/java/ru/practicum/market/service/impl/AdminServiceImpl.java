@@ -10,11 +10,12 @@ import org.springframework.web.multipart.MultipartFile;
 import ru.practicum.market.domain.exception.ItemImageBadRequest;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemUploadException;
-import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.AdminService;
+import ru.practicum.market.service.converter.ExcelConverter;
+import ru.practicum.market.web.dto.ItemShortResponseDto;
 import ru.practicum.market.web.dto.enums.SortMethod;
-import ru.practicum.market.web.mapper.ExcelMapper;
+import ru.practicum.market.web.mapper.ItemMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class AdminServiceImpl implements AdminService {
 
     private final ItemRepository itemRepository;
+    private final ExcelConverter excelConverter;
 
     @Value("${image.path}")
     private String imagePath;
@@ -37,11 +39,11 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void uploadItems(MultipartFile file) {
-        ExcelMapper.checkExcelFormat(file);
+        excelConverter.checkExcelFormat(file);
         log.info("Original filename: {}", file.getOriginalFilename());
         log.info("Content type: {}", file.getContentType());
         try {
-            itemRepository.saveAll(ExcelMapper.excelToItemList(file.getInputStream()));
+            itemRepository.saveAll(excelConverter.excelToItemList(file.getInputStream()));
             log.info("The Excel file is uploaded: {}", file.getOriginalFilename());
         } catch (Exception exception) {
             throw new ItemUploadException("The Excel file is not upload: %s!"
@@ -116,10 +118,10 @@ public class AdminServiceImpl implements AdminService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<Item> getAllItems() {
+    public List<ItemShortResponseDto> getAllItems() {
         log.info("Request to fetch all items for admin panel");
         var items = itemRepository.findAll(Sort.by(SortMethod.ALPHA.getColumnName()));
         log.debug("Fetched {} items for admin", items.size());
-        return items;
+        return ItemMapper.toShortResponseDtos(items);
     }
 }

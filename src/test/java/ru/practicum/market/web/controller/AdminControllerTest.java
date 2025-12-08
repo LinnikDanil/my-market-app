@@ -9,10 +9,12 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.market.service.AdminService;
-import ru.practicum.market.util.TestDataFactory;
+import ru.practicum.market.web.dto.ItemShortResponseDto;
 
-import static org.mockito.ArgumentMatchers.anyLong;
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -44,7 +46,7 @@ class AdminControllerTest {
         @Test
         @DisplayName("ok")
         void test1() throws Exception {
-            var items = TestDataFactory.createItems(3);
+            var items = List.of(new ItemShortResponseDto(1L, "tit1"), new ItemShortResponseDto(1L, "tit2"));
             when(adminService.getAllItems()).thenReturn(items);
 
             mockMvc.perform(get("/admin"))

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -15,8 +14,8 @@ import ru.practicum.market.domain.exception.ItemImageBadRequest;
 import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.ItemRepository;
+import ru.practicum.market.service.converter.ExcelConverter;
 import ru.practicum.market.util.TestDataFactory;
-import ru.practicum.market.web.mapper.ExcelMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,9 +28,9 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AdminServiceImpl")
@@ -39,6 +38,9 @@ class AdminServiceImplTest {
 
     @Mock
     private ItemRepository itemRepository;
+
+    @Mock
+    private ExcelConverter excelConverter;
 
     @InjectMocks
     private AdminServiceImpl adminService;
@@ -58,43 +60,38 @@ class AdminServiceImplTest {
             );
             var items = TestDataFactory.createItems(3);
 
-            try (MockedStatic<ExcelMapper> excelMapperMock = mockStatic(ExcelMapper.class)) {
-                excelMapperMock.when(() -> ExcelMapper.checkExcelFormat(file)).thenAnswer(invocation -> null);
-                excelMapperMock.when(() -> ExcelMapper.excelToItemList(any(InputStream.class))).thenReturn(items);
+            when(excelConverter.excelToItemList(any(InputStream.class))).thenReturn(items);
 
-                adminService.uploadItems(file);
+            adminService.uploadItems(file);
 
-                excelMapperMock.verify(() -> ExcelMapper.checkExcelFormat(file));
-                excelMapperMock.verify(() -> ExcelMapper.excelToItemList(any(InputStream.class)));
-                verify(itemRepository, times(1)).saveAll(eq(items));
-            }
+            verify(excelConverter, times(1)).checkExcelFormat(file);
+            verify(excelConverter, times(1)).excelToItemList(any(InputStream.class));
+            verify(itemRepository, times(1)).saveAll(eq(items));
         }
+    }
 
-        @Test
-        @DisplayName("exception")
-        void test2() {
-            var file = new MockMultipartFile(
-                    "file",
-                    "items.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    "content".getBytes()
-            );
+    @Test
+    @DisplayName("exception")
+    void test2() {
+        var file = new MockMultipartFile(
+                "file",
+                "items.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "content".getBytes()
+        );
 
-            try (MockedStatic<ExcelMapper> excelMapperMock = mockStatic(ExcelMapper.class)) {
-                excelMapperMock.when(() -> ExcelMapper.checkExcelFormat(file)).thenAnswer(invocation -> null);
-                excelMapperMock.when(() -> ExcelMapper.excelToItemList(any(InputStream.class)))
-                        .thenThrow(new RuntimeException("excel error"));
+        when(excelConverter.excelToItemList(any(InputStream.class)))
+                .thenThrow(new RuntimeException("excel error"));
 
-                assertThatExceptionOfType(ItemUploadException.class)
-                        .isThrownBy(() -> adminService.uploadItems(file))
-                        .withMessage("The Excel file is not upload: %s!".formatted(file.getOriginalFilename()))
-                        .withCauseInstanceOf(RuntimeException.class);
+        assertThatExceptionOfType(ItemUploadException.class)
+                .isThrownBy(() -> adminService.uploadItems(file))
+                .withMessage("The Excel file is not upload: %s!".formatted(file.getOriginalFilename()))
+                .withCauseInstanceOf(RuntimeException.class);
 
-                excelMapperMock.verify(() -> ExcelMapper.checkExcelFormat(file));
-                excelMapperMock.verify(() -> ExcelMapper.excelToItemList(any(InputStream.class)));
-                verify(itemRepository, times(0)).saveAll(any());
-            }
-        }
+        verify(excelConverter, times(1)).checkExcelFormat(file);
+        verify(excelConverter, times(1)).excelToItemList(any(InputStream.class));
+        verify(itemRepository, times(0)).saveAll(any());
+
     }
 
     @Nested

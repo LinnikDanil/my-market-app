@@ -14,6 +14,10 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.FieldDefaults;
 
+/**
+ * Так, как проект учебный, то корзина одна.
+ * На боевом проекте использовал бы userId для разделения корзин между пользователями
+ */
 @Entity
 @Table(name = "cart_items")
 @Getter
