@@ -1,4 +1,4 @@
-package ru.practicum.market;
+package ru.practicum.market.util;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.containers.PostgreSQLContainer;
