@@ -2,12 +2,13 @@ package ru.practicum.market.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.CartItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.CartItem;
@@ -23,9 +24,8 @@ import ru.practicum.market.web.dto.enums.CartAction;
 import ru.practicum.market.web.dto.enums.SortMethod;
 import ru.practicum.market.web.mapper.ItemMapper;
 
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static ru.practicum.market.web.dto.enums.SortMethod.ALPHA;
 import static ru.practicum.market.web.dto.enums.SortMethod.PRICE;
@@ -42,9 +42,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    public ItemsResponseDto getItems(String search, SortMethod sortMethod, int pageNumber, int pageSize) {
+    public Mono<ItemsResponseDto> getItems(String search, SortMethod sortMethod, int pageNumber, int pageSize) {
 
-        log.info("Request to fetch items with search='{}', sortMethod={}, pageNumber={}, pageSize={}",
+        log.debug("Request to fetch items with search='{}', sortMethod={}, pageNumber={}, pageSize={}",
                 search, sortMethod, pageNumber, pageSize);
 
         var sort = switch (sortMethod) {
@@ -54,34 +54,40 @@ public class ItemServiceImpl implements ItemService {
         };
         var pageable = PageRequest.of(pageNumber - 1, pageSize, sort);
 
-        Page<Item> itemsPage;
+        Mono<List<Item>> itemsMono;
+        Mono<Long> itemsCountMono;
         if (StringUtils.hasText(search)) {
-            itemsPage = itemRepository
-                    .findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search, pageable);
+            itemsMono = itemRepository
+                    .findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search, pageable)
+                    .collectList();
+            itemsCountMono = itemRepository
+                    .countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search);
         } else {
-            itemsPage = itemRepository.findAll(pageable);
+            itemsMono = itemRepository.findAll(pageable).collectList();
+            itemsCountMono = itemRepository.count();
         }
 
-        var items = itemsPage.getContent();
+        return Mono.zip(itemsMono, itemsCountMono)
+                .flatMap(tuple -> {
+                    var items = tuple.getT1();
+                    var itemsCount = tuple.getT2();
 
-        Map<Long, Integer> itemsQuantity = new HashMap<>();
-        if (!items.isEmpty()) {
-            var cartItems = cartItemRepository.findByItemIds(items.stream().map(Item::getId).toList());
+                    Mono<Map<Long, Integer>> quantityForItemMono = items.isEmpty()
+                            ? Mono.just(Map.of())
+                            : cartItemRepository.findByItemIdIn(items.stream().map(Item::getId).toList())
+                            .collectMap(CartItem::getItemId, CartItem::getQuantity);
 
-            log.debug("Fetched {} items, {} related cart items", items.size(), cartItems.size());
+                    return quantityForItemMono.map(quantityForItem -> {
+                        log.debug("Fetched {} items, {} related cart items", items.size(), quantityForItem.size());
+                        var itemRows = ItemMapper.toItemRows(items, quantityForItem, ITEMS_IN_ROW);
 
-            itemsQuantity = cartItems.stream()
-                    .collect(Collectors.toMap(
-                            ci -> ci.getItem().getId(),
-                            CartItem::getQuantity
-                    ));
-        }
+                        log.debug("Items response prepared with {} rows", itemRows.size());
 
-        var itemRows = ItemMapper.toItemRows(items, itemsQuantity, ITEMS_IN_ROW);
+                        var paging = convertToPaging(items, itemsCount, pageable);
 
-        var response = new ItemsResponseDto(itemRows, search, sortMethod, convertToPaging(itemsPage));
-        log.info("Items response prepared with {} rows", itemRows.size());
-        return response;
+                        return new ItemsResponseDto(itemRows, search, sortMethod, paging);
+                    });
+                });
     }
 
     @Override
@@ -162,7 +168,12 @@ public class ItemServiceImpl implements ItemService {
                 .orElseThrow(() -> new ItemNotFoundException(id, "Item with id = %d not found.".formatted(id)));
     }
 
-    private Paging convertToPaging(Page<Item> page) {
-        return new Paging(page.getSize(), page.getNumber() + 1, page.hasPrevious(), page.hasNext());
+
+    private Paging convertToPaging(List<Item> items, long itemsCount, Pageable pageable) {
+        var pageNumber = pageable.getPageNumber() + 1;
+        var hasPreviousPage = pageNumber > 1;
+        var hasNextPage = pageable.getOffset() + items.size() < itemsCount;
+
+        return new Paging(items.size(), pageNumber, hasPreviousPage, hasNextPage);
     }
 }
