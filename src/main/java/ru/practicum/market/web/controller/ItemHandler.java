@@ -6,6 +6,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.web.bind.ItemsQueryBinder;
@@ -41,23 +42,39 @@ public class ItemHandler {
     }
 
     public Mono<ServerResponse> getItem(ServerRequest request) {
-        var item = itemService.getItem(id);
-
-        model.addAttribute("item", item);
-
-        return "item";
+        var id = binder.bindPathVariableId(request);
+        return getItemById(id);
     }
 
     public Mono<ServerResponse> updateItemsCountInCartForItems(ServerRequest request) {
-        itemService.updateItemsCountInCart(id, action);
-        return "redirect:/items?search=%s&sort=%s&pageNumber=%d&pageSize=%d"
-                .formatted(search, sort, pageNumber, pageSize);
+        var id = binder.bindParamId(request);
+        var action = binder.bindParamAction(request);
+        var iq = binder.bind(request);
+        var redirectUri = UriComponentsBuilder.fromPath("/items")
+                .queryParam("search", iq.search())
+                .queryParam("sort", iq.sort())
+                .queryParam("pageNumber", iq.pageNumber())
+                .queryParam("pageSize", iq.pageSize())
+                .build(true)
+                .toUri();
+
+        return itemService.updateItemsCountInCart(id, action)
+                .then(ServerResponse.seeOther(redirectUri).build());
     }
 
     public Mono<ServerResponse> updateItemsCountInCartForItem(ServerRequest request) {
-        itemService.updateItemsCountInCart(id, action);
+        var id = binder.bindPathVariableId(request);
+        var action = binder.bindParamAction(request);
 
-        return getItem(id, model);
+        return itemService.updateItemsCountInCart(id, action)
+                .then(getItemById(id));
     }
 
+    private Mono<ServerResponse> getItemById(long id) {
+        return itemService.getItem(id)
+                .flatMap(item ->
+                        ServerResponse.ok()
+                                .contentType(MediaType.TEXT_HTML)
+                                .render("item", Map.of("item", item)));
+    }
 }

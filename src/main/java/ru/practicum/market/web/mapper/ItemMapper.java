@@ -11,6 +11,7 @@ import ru.practicum.market.web.dto.ItemShortResponseDto;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @UtilityClass
 public class ItemMapper {
@@ -56,16 +57,21 @@ public class ItemMapper {
         return itemRows;
     }
 
-    public static CartResponseDto toCart(List<CartItem> cartItems) {
-        var items = cartItems.stream()
-                .map(ci -> toItemResponseDto(ci.getItem(), ci.getQuantity()))
+    public static CartResponseDto toCart(List<CartItem> cartItems, List<Item> itemsInCart) {
+        var itemById = itemsInCart.stream()
+                .collect(Collectors.toMap(Item::getId, item -> item));
+        var quantityByItemId = cartItems.stream()
+                .collect(Collectors.toMap(CartItem::getItemId, CartItem::getQuantity));
+        var itemsResponseDto = quantityByItemId.entrySet().stream()
+                .map(iq -> toItemResponseDto(itemById.get(iq.getKey()), iq.getValue()))
                 .toList();
-        return new CartResponseDto(items, calculateTotalSum(cartItems));
+
+        return new CartResponseDto(itemsResponseDto, calculateTotalSum(quantityByItemId, itemById));
     }
 
-    private static long calculateTotalSum(List<CartItem> cartItems) {
-        return cartItems.stream()
-                .map(ci -> ci.getQuantity() * ci.getItem().getPrice())
+    private static long calculateTotalSum(Map<Long, Integer> quantityByItemId, Map<Long, Item> itemById) {
+        return quantityByItemId.entrySet().stream()
+                .map(ic -> itemById.get(ic.getKey()).getPrice() * ic.getValue())
                 .reduce(0L, Long::sum);
     }
 

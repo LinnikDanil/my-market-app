@@ -6,6 +6,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.model.Item;
 
+import java.util.Collection;
+
 public interface ItemRepository extends ReactiveCrudRepository<Item, Long> {
 
     Flux<Item> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
@@ -17,4 +19,6 @@ public interface ItemRepository extends ReactiveCrudRepository<Item, Long> {
     Mono<Long> countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
 
     Flux<Item> findAll(Pageable pageable);
+
+    Flux<Item> findByIdIn(Collection<Long> ids);
 }

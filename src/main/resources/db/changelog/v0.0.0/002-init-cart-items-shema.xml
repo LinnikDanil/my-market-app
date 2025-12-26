@@ -47,7 +47,7 @@
                                  referencedColumnNames="id"/>
 
         <rollback>
-            <dropForeignKeyConstraint baseTableName="cart_items" constraintName="fk_cart_items_items"/>
+            <dropForeignKeyConstraint baseTableName="cart_items" constraintName="fk_cart_items_item"/>
         </rollback>
     </changeSet>
 

@@ -10,9 +10,9 @@ import ru.practicum.market.web.dto.enums.SortMethod;
 public interface ItemService {
     Mono<ItemsResponseDto> getItems(String search, SortMethod sort, int pageNumber, int pageSize);
 
-    ItemResponseDto getItem(long id);
+    Mono<ItemResponseDto> getItem(long id);
 
-    void updateItemsCountInCart(long id, CartAction action);
+    Mono<Void> updateItemsCountInCart(long id, CartAction action);
 
-    CartResponseDto getCart();
+    Mono<CartResponseDto> getCart();
 }

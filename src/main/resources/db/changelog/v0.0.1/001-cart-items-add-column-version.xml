@@ -1,0 +1,24 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="add_column_version_to_cart_items" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <columnExists tableName="cart_items" columnName="version"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="cart_items">
+            <column name="version" type="bigint"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="cart_items" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
