@@ -1,11 +1,10 @@
 package ru.practicum.market.service;
 
+import reactor.core.publisher.Flux;
 import ru.practicum.market.web.dto.OrderResponseDto;
 
-import java.util.List;
-
 public interface OrderService {
-    List<OrderResponseDto> getOrders();
+    Flux<OrderResponseDto> getOrders();
 
     OrderResponseDto getOrder(long id);
 

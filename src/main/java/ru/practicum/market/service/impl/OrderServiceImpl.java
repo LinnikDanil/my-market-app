@@ -4,16 +4,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
 import ru.practicum.market.domain.exception.OrderConflictException;
 import ru.practicum.market.domain.exception.OrderNotFoundException;
+import ru.practicum.market.domain.model.Order;
+import ru.practicum.market.domain.model.OrderItem;
 import ru.practicum.market.repository.CartItemRepository;
+import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.repository.OrderItemRepository;
 import ru.practicum.market.repository.OrderRepository;
 import ru.practicum.market.service.OrderService;
 import ru.practicum.market.web.dto.OrderResponseDto;
 import ru.practicum.market.web.mapper.OrderMapper;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -23,15 +25,34 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
+    private final ItemRepository itemRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponseDto> getOrders() {
+    public Flux<OrderResponseDto> getOrders() {
         log.info("Request to fetch all orders");
-        var orders = orderRepository.findAllFetch();
+        // Все заказы
+        return orderRepository.findAll().collectList()
+                .flatMapMany(orders -> {
+                    if (orders.isEmpty()) return Flux.empty();
+                    var orderIds = orders.stream().map(Order::getId).toList();
 
-        log.debug("Fetched {} orders", orders.size());
-        return OrderMapper.toOrderResponseDtos(orders);
+                    // Все orderItem, которые использовались в заказах
+                    return orderItemRepository.findByOrderIdIn(orderIds)
+                            .collectList()
+                            .flatMapMany(orderItems -> {
+                                var itemIds = orderItems.stream().map(OrderItem::getItemId).toList();
+
+                                // Все товары, которые использовались в заказах
+                                return itemRepository.findByIdIn(itemIds).collectList()
+                                        .flatMapMany(items -> {
+                                            var responses = OrderMapper.toOrderResponseDtos(orders, orderItems, items);
+                                            log.debug("Fetched {} orders", orders.size());
+
+                                            return Flux.fromIterable(responses);
+                                        });
+                            });
+                });
     }
 
     @Override

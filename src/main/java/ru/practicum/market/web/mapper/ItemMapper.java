@@ -28,12 +28,6 @@ public class ItemMapper {
                 .toList();
     }
 
-    public static List<ItemResponseDto> orderItemsToItemResponseDtos(List<OrderItem> orderItems) {
-        return orderItems.stream()
-                .map(oi -> createItemResponseDto(oi.getItem(), oi.getQuantity()))
-                .toList();
-    }
-
     public static List<List<ItemResponseDto>> toItemRows(List<Item> items,
                                                          Map<Long, Integer> itemsQuantity,
                                                          int rowSize) {
@@ -75,7 +69,7 @@ public class ItemMapper {
                 .reduce(0L, Long::sum);
     }
 
-    private ItemResponseDto createItemResponseDto(Item item, int quantity) {
+    private static ItemResponseDto createItemResponseDto(Item item, int quantity) {
         return new ItemResponseDto(
                 item.getId(),
                 item.getTitle(),
