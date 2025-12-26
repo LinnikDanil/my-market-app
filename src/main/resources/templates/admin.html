@@ -22,17 +22,20 @@
             </div>
         </div>
 
-        <div class="row p-2" th:if="${message}">
+        <div class="row p-2" th:if="${param.message}">
             <div class="col">
-                <div class="alert alert-success" role="alert" th:text="${message}"></div>
+                <div class="alert alert-success" role="alert"
+                     th:text="${param.message}"></div>
             </div>
         </div>
 
-        <div class="row p-2" th:if="${error}">
+        <div class="row p-2" th:if="${param.error}">
             <div class="col">
-                <div class="alert alert-danger" role="alert" th:text="${error}"></div>
+                <div class="alert alert-danger" role="alert"
+                     th:text="${param.error}"></div>
             </div>
         </div>
+
 
         <div class="row p-2 g-3">
             <div class="col-lg-6">

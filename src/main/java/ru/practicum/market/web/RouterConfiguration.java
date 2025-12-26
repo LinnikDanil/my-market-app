@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import ru.practicum.market.web.controller.AdminHandler;
+import ru.practicum.market.web.controller.CartHandler;
 import ru.practicum.market.web.controller.ItemHandler;
 import ru.practicum.market.web.controller.OrderHandler;
 
@@ -25,6 +27,16 @@ public class RouterConfiguration {
     }
 
     @Bean
+    public RouterFunction<ServerResponse> cartRoutes(CartHandler cartHandler) {
+        return RouterFunctions.route()
+                .path("/cart/items", apiBuilder -> apiBuilder
+                        .GET("", cartHandler::getCart)
+                        .POST("", cartHandler::updateItemsCountInCart)
+                )
+                .build();
+    }
+
+    @Bean
     public RouterFunction<ServerResponse> orderRoutes(OrderHandler orderHandler) {
         return RouterFunctions.route()
                 .path("/orders", apiBuilder -> apiBuilder
@@ -35,13 +47,16 @@ public class RouterConfiguration {
                 .build();
     }
 
-//    public RouterFunction<ServerResponse> adminRoutes(AdminHandler adminHandler) {
-//        return RouterFunctions.route()
-//                .path("/admin/items", apiBuilder -> apiBuilder
-//                        .POST("/upload", adminHandler::uploadItems)
-//                        .POST("/{id}/image", adminHandler::uploadItems)
-//                )
-//                .build();
-//    }
+    public RouterFunction<ServerResponse> adminRoutes(AdminHandler adminHandler) {
+        return RouterFunctions.route()
+                .path("/admin", apiBuilder -> apiBuilder
+                        .GET("", adminHandler::getAdminPage)
+                        .path("/items", itemsBuilder -> itemsBuilder
+                                .POST("/upload", adminHandler::uploadItems)
+                                .POST("/{id}/image", adminHandler::uploadImage)
+                        )
+                )
+                .build();
+    }
 
 }
