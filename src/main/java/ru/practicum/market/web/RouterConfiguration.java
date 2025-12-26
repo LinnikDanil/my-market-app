@@ -6,6 +6,7 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import ru.practicum.market.web.controller.ItemHandler;
+import ru.practicum.market.web.controller.OrderHandler;
 
 @Configuration
 public class RouterConfiguration {
@@ -20,6 +21,17 @@ public class RouterConfiguration {
                         .POST("", itemHandler::updateItemsCountInCartForItems)
                         .POST("/{id}", itemHandler::updateItemsCountInCartForItem)
                 )
+                .build();
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> orderRoutes(OrderHandler orderHandler) {
+        return RouterFunctions.route()
+                .path("/orders", apiBuilder -> apiBuilder
+                        .GET("", orderHandler::getOrders)
+                        .GET("/{id}", orderHandler::getOrder)
+                )
+                .POST("/buy", orderHandler::createOrder)
                 .build();
     }
 

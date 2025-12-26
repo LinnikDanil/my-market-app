@@ -8,7 +8,7 @@ import ru.practicum.market.web.dto.enums.CartAction;
 import ru.practicum.market.web.dto.enums.SortMethod;
 
 @Component
-public class ItemsQueryBinder {
+public class QueryBinder {
     private static final String PATH_VARIABLE_ID = "id";
     private static final String PARAM_ID = "id";
     private static final String PARAM_ACTION = "action";
@@ -16,10 +16,11 @@ public class ItemsQueryBinder {
     private static final String PARAM_SORT = "sort";
     private static final String PARAM_PAGE_NUMBER = "pageNumber";
     private static final String PARAM_PAGE_SIZE = "pageSize";
+    private static final String PARAM_NEW_ORDER = "newOrder";
     private static final int MIN_PAGE_NUMBER = 1;
     private static final int MIN_PAGE_SIZE = 5;
 
-    public ItemsQuery bind(ServerRequest request) {
+    public ItemsQuery bindItemsQuery(ServerRequest request) {
         String search = request.queryParam(PARAM_SEARCH)
                 .orElse(null);
         var sortMethod = request.queryParam(PARAM_SORT)
@@ -56,6 +57,18 @@ public class ItemsQueryBinder {
                     }
                 })
                 .orElseThrow(() -> new MarketBadRequestException("Missing query param: " + PARAM_ACTION));
+    }
+
+    public boolean bindParamNewOrder(ServerRequest request) {
+        return request.queryParam(PARAM_NEW_ORDER)
+                .map(newOrder -> {
+                    try {
+                        return Boolean.parseBoolean(newOrder);
+                    } catch (IllegalArgumentException e) {
+                        throw new MarketBadRequestException("Boolean not true or false: " + newOrder);
+                    }
+                })
+                .orElse(false);
     }
 
     private int parsePositiveInt(String pg, String field) {

@@ -2,7 +2,6 @@ package ru.practicum.market.domain.model;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,7 +14,6 @@ import org.springframework.data.relational.core.mapping.Table;
 @Getter
 @Setter
 @ToString(callSuper = true)
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)

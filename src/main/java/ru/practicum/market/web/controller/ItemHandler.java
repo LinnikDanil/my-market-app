@@ -2,27 +2,25 @@ package ru.practicum.market.web.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Controller;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.service.ItemService;
-import ru.practicum.market.web.bind.ItemsQueryBinder;
+import ru.practicum.market.web.bind.QueryBinder;
 
 import java.util.Map;
 
-@Controller
 @RequiredArgsConstructor
-@Validated
+@Component
 public class ItemHandler {
 
     private final ItemService itemService;
-    private final ItemsQueryBinder binder;
+    private final QueryBinder binder;
 
     public Mono<ServerResponse> getItems(ServerRequest request) {
-        var itemsQuery = binder.bind(request);
+        var itemsQuery = binder.bindItemsQuery(request);
         return itemService.getItems(
                         itemsQuery.search(),
                         itemsQuery.sort(),
@@ -49,7 +47,7 @@ public class ItemHandler {
     public Mono<ServerResponse> updateItemsCountInCartForItems(ServerRequest request) {
         var id = binder.bindParamId(request);
         var action = binder.bindParamAction(request);
-        var iq = binder.bind(request);
+        var iq = binder.bindItemsQuery(request);
         var redirectUri = UriComponentsBuilder.fromPath("/items")
                 .queryParam("search", iq.search())
                 .queryParam("sort", iq.sort())

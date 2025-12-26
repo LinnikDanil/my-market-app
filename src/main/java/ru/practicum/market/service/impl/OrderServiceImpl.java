@@ -5,8 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.OrderConflictException;
 import ru.practicum.market.domain.exception.OrderNotFoundException;
+import ru.practicum.market.domain.model.CartItem;
 import ru.practicum.market.domain.model.Order;
 import ru.practicum.market.domain.model.OrderItem;
 import ru.practicum.market.repository.CartItemRepository;
@@ -30,7 +32,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public Flux<OrderResponseDto> getOrders() {
-        log.info("Request to fetch all orders");
+        log.debug("Request to fetch all orders");
         // Все заказы
         return orderRepository.findAll().collectList()
                 .flatMapMany(orders -> {
@@ -57,36 +59,47 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponseDto getOrder(long id) {
-        log.info("Request to fetch order with id={}", id);
-        var order = orderRepository.findByIdFetch(id)
-                .orElseThrow(() -> new OrderNotFoundException(id, "Order with id = %d not found.".formatted(id)));
+    public Mono<OrderResponseDto> getOrder(long id) {
+        log.debug("Request to fetch order with id={}", id);
 
-        return OrderMapper.toOrderResponseDto(order);
+        return orderRepository.findById(id)
+                .switchIfEmpty(Mono.error(new OrderNotFoundException(id, "Order with id = %d not found.".formatted(id))))
+                .flatMap(order -> orderItemRepository.findByOrderId(id).collectList()
+                        .flatMap(orderItems -> {
+                            var itemIds = orderItems.stream().map(OrderItem::getItemId).toList();
+                            return itemRepository.findByIdIn(itemIds).collectList()
+                                    .map(items -> OrderMapper.toOrderResponseDto(order, orderItems, items));
+                        })
+                );
     }
 
     @Override
     @Transactional
-    public long createOrder() {
-        log.info("Creating order from cart items");
-        var cartItems = cartItemRepository.findAllFetch();
+    public Mono<Long> createOrder() {
+        log.debug("Creating order from cart items");
+        return cartItemRepository.findAll()
+                .collectList()
+                .flatMap(cartItems -> {
+                    if (cartItems.isEmpty())
+                        return Mono.error(new OrderConflictException("Order must contain at least one item."));
 
-        if (cartItems.isEmpty()) {
-            throw new OrderConflictException("Order must contain at least one item.");
-        }
+                    var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
 
-        var newOrder = OrderMapper.toOrder(cartItems);
-        var savedOrder = orderRepository.save(newOrder);
-        log.debug("Order created with id={} and {} items", savedOrder.getId(), cartItems.size());
+                    return itemRepository.findByIdIn(itemIds).collectList()
+                            .flatMap(items -> orderRepository.save(OrderMapper.toOrder(cartItems, items))
+                                    .flatMap(savedOrder -> {
+                                        var orderId = savedOrder.getId();
+                                        log.debug("Order created with id={} and {} items", orderId, cartItems.size());
+                                        var orderItems = OrderMapper.toOrderItems(cartItems, items, orderId);
 
-        var orderItems = OrderMapper.toOrderItems(cartItems, savedOrder);
-        orderItemRepository.saveAll(orderItems);
-
-        log.info("Saved {} order items for order {}", orderItems.size(), savedOrder.getId());
-
-        cartItemRepository.deleteAll();
-        log.debug("Cart items cleared after order creation");
-
-        return savedOrder.getId();
+                                        return orderItemRepository.saveAll(orderItems)
+                                                .doOnComplete(() -> log.debug("Saved {} order items for order {}", orderItems.size(), orderId))
+                                                .then(cartItemRepository.deleteAll()
+                                                        .doOnSuccess(v -> log.debug("Cart items cleared after order creation"))
+                                                )
+                                                .thenReturn(orderId);
+                                    })
+                            );
+                });
     }
 }

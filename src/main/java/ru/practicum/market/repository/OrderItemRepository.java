@@ -10,4 +10,6 @@ import java.util.Collection;
 @Repository
 public interface OrderItemRepository extends ReactiveCrudRepository<OrderItem, Long> {
     Flux<OrderItem> findByOrderIdIn(Collection<Long> orderIds);
+
+    Flux<OrderItem> findByOrderId(long id);
 }
