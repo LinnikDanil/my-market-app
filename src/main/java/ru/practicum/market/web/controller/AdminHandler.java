@@ -3,6 +3,7 @@ package ru.practicum.market.web.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -17,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RequiredArgsConstructor
+@Component
 public class AdminHandler {
 
     private final AdminService adminService;

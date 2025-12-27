@@ -2,6 +2,7 @@ package ru.practicum.market.web.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
@@ -11,6 +12,7 @@ import ru.practicum.market.web.bind.QueryBinder;
 import java.util.Map;
 
 @RequiredArgsConstructor
+@Component
 public class CartHandler {
 
     private final ItemService itemService;

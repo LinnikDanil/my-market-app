@@ -1,5 +1,6 @@
 package ru.practicum.market.web;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -9,9 +10,29 @@ import ru.practicum.market.web.controller.AdminHandler;
 import ru.practicum.market.web.controller.CartHandler;
 import ru.practicum.market.web.controller.ItemHandler;
 import ru.practicum.market.web.controller.OrderHandler;
+import ru.practicum.market.web.filter.RouteExceptionFilter;
+import ru.practicum.market.web.filter.RouteLoggingFilter;
 
+@Slf4j
 @Configuration
 public class RouterConfiguration {
+
+    @Bean
+    public RouterFunction<ServerResponse> routes(
+            RouterFunction<ServerResponse> itemRoutes,
+            RouterFunction<ServerResponse> cartRoutes,
+            RouterFunction<ServerResponse> orderRoutes,
+            RouterFunction<ServerResponse> adminRoutes,
+            RouteLoggingFilter routeLoggingFilter,
+            RouteExceptionFilter routeExceptionFilter
+    ) {
+        return itemRoutes
+                .and(cartRoutes)
+                .and(orderRoutes)
+                .and(adminRoutes)
+                .filter(routeLoggingFilter.logging())
+                .filter(routeExceptionFilter.errors());
+    }
 
     @Bean
     public RouterFunction<ServerResponse> itemRoutes(ItemHandler itemHandler) {
@@ -47,6 +68,7 @@ public class RouterConfiguration {
                 .build();
     }
 
+    @Bean
     public RouterFunction<ServerResponse> adminRoutes(AdminHandler adminHandler) {
         return RouterFunctions.route()
                 .path("/admin", apiBuilder -> apiBuilder
