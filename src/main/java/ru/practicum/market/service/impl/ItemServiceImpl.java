@@ -67,7 +67,7 @@ public class ItemServiceImpl implements ItemService {
             itemsCountMono = itemRepository
                     .countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search);
         } else {
-            itemsMono = itemRepository.findAll(pageable).collectList();
+            itemsMono = itemRepository.findAllBy(pageable).collectList();
             itemsCountMono = itemRepository.count();
         }
 

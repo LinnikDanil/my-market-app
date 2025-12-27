@@ -36,6 +36,7 @@ dependencies {
 
     implementation 'org.liquibase:liquibase-core'
     implementation 'org.postgresql:r2dbc-postgresql'
+    runtimeOnly "org.postgresql:postgresql"
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
