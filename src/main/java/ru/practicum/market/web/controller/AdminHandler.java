@@ -26,11 +26,11 @@ public class AdminHandler {
 
     @GetMapping
     public Mono<ServerResponse> getAdminPage(ServerRequest request) {
-        var itemsDriver = new ReactiveDataDriverContextVariable(adminService.getAllItems(), 10);
-
-        return ServerResponse.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .render("admin", Map.of("items", itemsDriver));
+        return adminService.getAllItems()
+                .collectList()
+                .flatMap(items -> ServerResponse.ok()
+                        .contentType(MediaType.TEXT_HTML)
+                        .render("admin", Map.of("items", items)));
     }
 
     public Mono<ServerResponse> uploadItems(ServerRequest request) {

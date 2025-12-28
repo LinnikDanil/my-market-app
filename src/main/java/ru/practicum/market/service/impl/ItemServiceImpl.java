@@ -99,20 +99,14 @@ public class ItemServiceImpl implements ItemService {
     public Mono<ItemResponseDto> getItem(long id) {
         log.debug("Request to fetch item with id={}", id);
 
-        var itemMono = findItem(id);
-        var itemQuantityMono = cartItemRepository.findByItemId(id)
-                .map(CartItem::getQuantity)
-                .defaultIfEmpty(0);
-
-        return Mono.zip(itemMono, itemQuantityMono)
-                .map(tuple -> {
-                    var item = tuple.getT1();
-                    var itemQuantity = tuple.getT2();
-
-                    log.debug("Item {} has quantity {} in cart", id, itemQuantity);
-
-                    return ItemMapper.toItemResponseDto(item, itemQuantity);
-                });
+        return findItem(id)
+                .flatMap(item ->
+                        cartItemRepository.findByItemId(id)
+                                .map(CartItem::getQuantity)
+                                .defaultIfEmpty(0)
+                                .map(itemQuantity -> ItemMapper.toItemResponseDto(item, itemQuantity))
+                                .doOnSuccess(r -> log.debug("Item {} has quantity {} in cart", id, r.count()))
+                );
     }
 
     @Override
@@ -224,6 +218,6 @@ public class ItemServiceImpl implements ItemService {
         var hasPreviousPage = pageNumber > 1;
         var hasNextPage = pageable.getOffset() + items.size() < itemsCount;
 
-        return new Paging(items.size(), pageNumber, hasPreviousPage, hasNextPage);
+        return new Paging(pageable.getPageSize(), pageNumber, hasPreviousPage, hasNextPage);
     }
 }

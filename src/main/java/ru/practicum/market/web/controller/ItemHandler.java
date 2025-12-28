@@ -9,7 +9,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.web.bind.QueryBinder;
+import ru.practicum.market.web.dto.ItemsResponseDto;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RequiredArgsConstructor
@@ -30,12 +32,7 @@ public class ItemHandler {
                 .flatMap(itemsResponseDto ->
                         ServerResponse.ok()
                                 .contentType(MediaType.TEXT_HTML)
-                                .render("items", Map.of(
-                                        "items", itemsResponseDto.items(),
-                                        "search", itemsResponseDto.search(),
-                                        "sort", itemsResponseDto.sort(),
-                                        "paging", itemsResponseDto.paging())
-                                )
+                                .render("items", buildItemsModel(itemsResponseDto))
                 );
     }
 
@@ -74,5 +71,14 @@ public class ItemHandler {
                         ServerResponse.ok()
                                 .contentType(MediaType.TEXT_HTML)
                                 .render("item", Map.of("item", item)));
+    }
+
+    private Map<String, Object> buildItemsModel(ItemsResponseDto itemsResponseDto) {
+        var model = new HashMap<String, Object>();
+        model.put("items", itemsResponseDto.items());
+        model.put("search", itemsResponseDto.search());
+        model.put("sort", itemsResponseDto.sort().name());
+        model.put("paging", itemsResponseDto.paging());
+        return model;
     }
 }

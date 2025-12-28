@@ -15,7 +15,8 @@
                          defaultValueComputed="CURRENT_TIMESTAMP"/>
 
         <rollback>
-            <dropDefaultValue tableName="orders" columnName="created_at"/>
+            <dropDefaultValue tableName="orders"
+                              columnName="created_at"/>
         </rollback>
     </changeSet>
 

@@ -14,6 +14,7 @@ import ru.practicum.market.domain.exception.ItemImageBadRequest;
 import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.domain.exception.MarketBadRequestException;
 import ru.practicum.market.domain.exception.NotFoundExceptionAbstract;
+import ru.practicum.market.domain.exception.OrderConflictException;
 
 import java.util.Map;
 
@@ -33,6 +34,8 @@ public class RouteExceptionFilter {
                         .onErrorResume(ItemUploadException.class, e -> adminBadRequest(e, request))
 
                         .onErrorResume(NotFoundExceptionAbstract.class, e -> notFound(e, request))
+
+                        .onErrorResume(OrderConflictException.class, e -> conflict(e, request))
 
                         .onErrorResume(Exception.class, e -> oops(e, request));
     }

@@ -6,5 +6,6 @@
 
     <include file="001-cart-items-add-column-version.xml" relativeToChangelogFile="true"/>
     <include file="002-cart-items-add-fk-cascade.xml" relativeToChangelogFile="true"/>
+    <include file="003-order-add-default_timestamp.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
