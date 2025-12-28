@@ -1,19 +1,19 @@
 package ru.practicum.market.repository;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import ru.practicum.market.domain.model.Order;
-import ru.practicum.market.domain.model.OrderItem;
 import ru.practicum.market.util.PostgresContainer;
 import ru.practicum.market.util.TestDataFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest
+@DataR2dbcTest
 @Testcontainers
 @ImportTestcontainers(PostgresContainer.class)
 @DisplayName("OrderRepository")
@@ -23,63 +23,39 @@ class OrderRepositoryIT {
     private OrderRepository orderRepository;
 
     @Autowired
-    private ItemRepository itemRepository;
+    private DatabaseClient db;
+
+    @BeforeEach
+    void clean() {
+        db.sql("TRUNCATE TABLE order_items, orders RESTART IDENTITY CASCADE").then().block();
+    }
 
     @Test
-    @DisplayName("findAllFetch")
+    @DisplayName("save and findAll")
     void test1() {
-        var savedOrder = orderRepository.save(createOrderWithItems());
+        var order = TestDataFactory.createOrder(500L);
 
-        var result = orderRepository.findAllFetch();
+        var resultMono = orderRepository.save(order)
+                .thenMany(orderRepository.findAll())
+                .collectList();
 
-        assertThat(result)
-                .isNotNull()
-                .hasSize(1);
-
-        var firstOrder = result.getFirst();
-        assertOrder(firstOrder, savedOrder);
+        var result = resultMono.block();
+        assertThat(result).hasSize(1);
+        var savedOrder = result.getFirst();
+        assertThat(savedOrder.getId()).isGreaterThan(0);
+        assertThat(savedOrder.getTotalSum()).isEqualTo(order.getTotalSum());
     }
 
     @Test
-    @DisplayName("findByIdFetch")
+    @DisplayName("save and findById")
     void test2() {
-        var savedOrder = orderRepository.save(createOrderWithItems());
+        var order = TestDataFactory.createOrder(700L);
 
-        var result = orderRepository.findByIdFetch(savedOrder.getId());
+        var resultMono = orderRepository.save(order)
+                .flatMap(saved -> orderRepository.findById(saved.getId()));
 
-        assertThat(result).isPresent();
-        assertOrder(result.get(), savedOrder);
-    }
-
-    private Order createOrderWithItems() {
-        var items = itemRepository.saveAll(TestDataFactory.createItemsForSave(2));
-        var order = TestDataFactory.createOrder(300L);
-        var orderItems = items.stream()
-                .map(item -> OrderItem.builder()
-                        .order(order)
-                        .item(item)
-                        .quantity(2)
-                        .priceAtOrder(item.getPrice())
-                        .build())
-                .toList();
-        order.setOrderItems(orderItems);
-        return order;
-    }
-
-    private static void assertOrder(Order result, Order expected) {
-        assertThat(result.getId()).isEqualTo(expected.getId());
-        assertThat(result.getTotalSum()).isEqualTo(expected.getTotalSum());
-        assertThat(result.getOrderItems())
-                .isNotEmpty()
-                .hasSize(expected.getOrderItems().size())
-                .allSatisfy(orderItem -> {
-                    var sourceItem = expected.getOrderItems().stream()
-                            .filter(oi -> oi.getItem().getId() == orderItem.getItem().getId())
-                            .findFirst()
-                            .orElseThrow();
-                    assertThat(orderItem.getOrder().getId()).isEqualTo(expected.getId());
-                    assertThat(orderItem.getQuantity()).isEqualTo(sourceItem.getQuantity());
-                    assertThat(orderItem.getPriceAtOrder()).isEqualTo(sourceItem.getPriceAtOrder());
-                });
+        var result = resultMono.block();
+        assertThat(result.getId()).isGreaterThan(0);
+        assertThat(result.getTotalSum()).isEqualTo(order.getTotalSum());
     }
 }

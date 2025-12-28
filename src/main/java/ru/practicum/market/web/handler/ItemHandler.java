@@ -1,4 +1,4 @@
-package ru.practicum.market.web.controller;
+package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;

@@ -6,10 +6,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import ru.practicum.market.web.controller.AdminHandler;
-import ru.practicum.market.web.controller.CartHandler;
-import ru.practicum.market.web.controller.ItemHandler;
-import ru.practicum.market.web.controller.OrderHandler;
+import ru.practicum.market.web.handler.AdminHandler;
+import ru.practicum.market.web.handler.CartHandler;
+import ru.practicum.market.web.handler.ItemHandler;
+import ru.practicum.market.web.handler.OrderHandler;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
 import ru.practicum.market.web.filter.RouteLoggingFilter;
 

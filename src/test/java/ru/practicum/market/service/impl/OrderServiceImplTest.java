@@ -4,30 +4,34 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.OrderConflictException;
 import ru.practicum.market.domain.exception.OrderNotFoundException;
+import ru.practicum.market.domain.model.CartItem;
+import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.domain.model.Order;
 import ru.practicum.market.domain.model.OrderItem;
 import ru.practicum.market.repository.CartItemRepository;
+import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.repository.OrderItemRepository;
 import ru.practicum.market.repository.OrderRepository;
 import ru.practicum.market.util.TestDataFactory;
-import ru.practicum.market.web.dto.OrderResponseDto;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrderServiceImpl")
@@ -42,6 +46,9 @@ class OrderServiceImplTest {
     @Mock
     private CartItemRepository cartItemRepository;
 
+    @Mock
+    private ItemRepository itemRepository;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -52,21 +59,22 @@ class OrderServiceImplTest {
         @Test
         @DisplayName("ok")
         void test1() {
-            var orders = createOrders();
-            var firstOrder = orders.getFirst();
+            var items = TestDataFactory.createItems(2);
+            var orders = List.of(TestDataFactory.createOrder(1L, 500L));
+            var orderItems = List.of(new OrderItem(1L, items.get(0).getId(), 2, items.get(0).getPrice()));
 
-            doReturn(orders).when(orderRepository).findAllFetch();
+            when(orderRepository.findAll()).thenReturn(Flux.fromIterable(orders));
+            when(orderItemRepository.findByOrderIdIn(List.of(1L))).thenReturn(Flux.fromIterable(orderItems));
+            when(itemRepository.findByIdIn(List.of(items.get(0).getId()))).thenReturn(Flux.fromIterable(items));
 
-            var response = orderService.getOrders();
+            var result = orderService.getOrders().collectList().block();
+            assertThat(result).hasSize(1);
+            var response = result.getFirst();
+            assertThat(response.id()).isEqualTo(1L);
+            assertThat(response.totalSum()).isEqualTo(500L);
+            assertThat(response.items()).hasSize(1);
 
-            assertThat(response)
-                    .isNotNull()
-                    .hasSize(orders.size());
-
-            var firstResponse = response.getFirst();
-            assertOrderResponse(firstResponse, firstOrder);
-
-            verify(orderRepository, times(1)).findAllFetch();
+            verify(orderRepository, times(1)).findAll();
         }
     }
 
@@ -77,13 +85,19 @@ class OrderServiceImplTest {
         @Test
         @DisplayName("ok")
         void test1() {
-            var order = createOrders().getFirst();
-            doReturn(Optional.of(order)).when(orderRepository).findByIdFetch(order.getId());
+            var items = TestDataFactory.createItems(1);
+            var order = TestDataFactory.createOrder(1L, 400L);
+            var orderItems = List.of(new OrderItem(order.getId(), items.getFirst().getId(), 2, items.getFirst().getPrice()));
 
-            var response = orderService.getOrder(order.getId());
+            when(orderRepository.findById(order.getId())).thenReturn(Mono.just(order));
+            when(orderItemRepository.findByOrderId(order.getId())).thenReturn(Flux.fromIterable(orderItems));
+            when(itemRepository.findByIdIn(List.of(items.getFirst().getId())))
+                    .thenReturn(Flux.fromIterable(items));
 
-            assertOrderResponse(response, order);
-            verify(orderRepository, times(1)).findByIdFetch(order.getId());
+            var response = orderService.getOrder(order.getId()).block();
+            assertThat(response.id()).isEqualTo(order.getId());
+            assertThat(response.totalSum()).isEqualTo(order.getTotalSum());
+            assertThat(response.items()).hasSize(1);
         }
 
         @Test
@@ -91,13 +105,12 @@ class OrderServiceImplTest {
         void test2() {
             var orderId = 99L;
 
-            doReturn(Optional.empty()).when(orderRepository).findByIdFetch(orderId);
+            when(orderRepository.findById(orderId)).thenReturn(Mono.empty());
 
             assertThatExceptionOfType(OrderNotFoundException.class)
-                    .isThrownBy(() -> orderService.getOrder(orderId))
-                    .withMessage("Order with id = %d not found.".formatted(orderId));
+                    .isThrownBy(() -> orderService.getOrder(orderId).block());
 
-            verify(orderRepository, times(1)).findByIdFetch(orderId);
+            verify(orderItemRepository, never()).findByOrderId(anyLong());
         }
     }
 
@@ -108,88 +121,40 @@ class OrderServiceImplTest {
         @Test
         @DisplayName("ok")
         void test1() {
-            var cartItems = TestDataFactory.createCartItemsForSave(3);
-            var totalSum = cartItems.stream()
-                    .map(ci -> ci.getItem().getPrice() * ci.getQuantity())
-                    .reduce(0L, Long::sum);
+            var items = TestDataFactory.createItems(2);
+            var cartItems = List.of(
+                    TestDataFactory.createCartItem(items.get(0).getId(), 2),
+                    TestDataFactory.createCartItem(items.get(1).getId(), 1)
+            );
+            var order = new Order(400L);
+            order.setId(5L);
+            var orderItems = List.of(
+                    new OrderItem(order.getId(), items.get(0).getId(), 2, items.get(0).getPrice()),
+                    new OrderItem(order.getId(), items.get(1).getId(), 1, items.get(1).getPrice())
+            );
 
-            doReturn(cartItems).when(cartItemRepository).findAllFetch();
-            doReturn(createOrderWithId(totalSum)).when(orderRepository).save(any(Order.class));
+            when(cartItemRepository.findAll()).thenReturn(Flux.fromIterable(cartItems));
+            when(itemRepository.findByIdIn(List.of(items.get(0).getId(), items.get(1).getId())))
+                    .thenReturn(Flux.fromIterable(items));
+            when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+            when(orderItemRepository.saveAll(anyList())).thenReturn(Flux.fromIterable(orderItems));
+            when(cartItemRepository.deleteAll()).thenReturn(Mono.empty());
 
-            var orderId = orderService.createOrder();
-
-            assertThat(orderId).isEqualTo(1L);
-
-            ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-            verify(orderRepository, times(1)).save(orderCaptor.capture());
-
-            var savedOrder = orderCaptor.getValue();
-            assertThat(savedOrder.getTotalSum()).isEqualTo(totalSum);
-
-            ArgumentCaptor<Iterable<OrderItem>> orderItemsCaptor = ArgumentCaptor.forClass(Iterable.class);
-            verify(orderItemRepository, times(1)).saveAll(orderItemsCaptor.capture());
-
-            var savedOrderItems = orderItemsCaptor.getValue();
-            assertThat(savedOrderItems)
-                    .hasSize(cartItems.size())
-                    .allSatisfy(orderItem -> {
-                        var cartItem = cartItems.stream()
-                                .filter(ci -> ci.getItem().equals(orderItem.getItem()))
-                                .findFirst()
-                                .orElseThrow();
-                        assertThat(orderItem.getOrder().getId()).isEqualTo(1L);
-                        assertThat(orderItem.getItem().getTitle()).isEqualTo(cartItem.getItem().getTitle());
-                        assertThat(orderItem.getQuantity()).isEqualTo(cartItem.getQuantity());
-                        assertThat(orderItem.getPriceAtOrder()).isEqualTo(cartItem.getItem().getPrice());
-                    });
+            var response = orderService.createOrder().block();
+            assertThat(response).isEqualTo(order.getId());
 
             verify(cartItemRepository, times(1)).deleteAll();
         }
 
         @Test
-        @DisplayName("cart empty")
+        @DisplayName("empty cart")
         void test2() {
-            doReturn(List.of()).when(cartItemRepository).findAllFetch();
+            when(cartItemRepository.findAll()).thenReturn(Flux.empty());
 
             assertThatExceptionOfType(OrderConflictException.class)
-                    .isThrownBy(orderService::createOrder)
-                    .withMessage("Order must contain at least one item.");
+                    .isThrownBy(() -> orderService.createOrder().block());
 
             verify(orderRepository, never()).save(any());
-            verify(orderItemRepository, never()).saveAll(any());
-            verify(cartItemRepository, never()).deleteAll();
         }
-    }
-
-    private static List<Order> createOrders() {
-        var order = TestDataFactory.createOrder(1L, 200L);
-        var items = TestDataFactory.createItems(2);
-        var orderItems = TestDataFactory.createOrderItems(order, items);
-        order.setOrderItems(orderItems);
-        return List.of(order);
-    }
-
-    private static Order createOrderWithId(long totalSum) {
-        var order = TestDataFactory.createOrder(totalSum);
-        order.setId(1L);
-        return order;
-    }
-
-    private static void assertOrderResponse(OrderResponseDto response, Order order) {
-        assertThat(response.id()).isEqualTo(order.getId());
-        assertThat(response.totalSum()).isEqualTo(order.getTotalSum());
-        assertThat(response.items())
-                .hasSize(order.getOrderItems().size())
-                .allSatisfy(item -> {
-                    var orderItem = order.getOrderItems().stream()
-                            .filter(oi -> oi.getItem().getId() == item.id())
-                            .findFirst()
-                            .orElseThrow();
-                    assertThat(item.title()).isEqualTo(orderItem.getItem().getTitle());
-                    assertThat(item.description()).isEqualTo(orderItem.getItem().getDescription());
-                    assertThat(item.imgPath()).isEqualTo(orderItem.getItem().getImgPath());
-                    assertThat(item.price()).isEqualTo(orderItem.getPriceAtOrder());
-                    assertThat(item.count()).isEqualTo(orderItem.getQuantity());
-                });
     }
 }

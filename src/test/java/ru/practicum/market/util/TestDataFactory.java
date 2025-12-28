@@ -49,41 +49,30 @@ public class TestDataFactory {
     }
 
     public static Item createItemForSave(int counter) {
-        return Item.builder()
-                .title("title" + counter)
-                .description("description" + counter)
-                .imgPath("imgPath" + counter)
-                .price(100L * counter)
-                .build();
+        return new Item(
+                "title" + counter,
+                "description" + counter,
+                "imgPath" + counter,
+                100L * counter);
     }
 
-    public static CartItem createCartItem(Long id, int quantity) {
-        var cartItem = new CartItem(createItem(id), quantity);
-        cartItem.setId(id);
+    public static CartItem createCartItem(long itemId, int quantity) {
+        var cartItem = new CartItem();
+        cartItem.setItemId(itemId);
+        cartItem.setQuantity(quantity);
         return cartItem;
     }
 
-    public static CartItem createCartItem(Item item, int quantity) {
-        return new CartItem(
-                item,
-                quantity
-        );
-    }
-
-    public static List<CartItem> createCartItemsForSave(int size) {
-        var items = new ArrayList<CartItem>();
-        for (int i = 1; i <= size; i++) {
-            items.add(createCartItem(createItemForSave(i), ThreadLocalRandom.current().nextInt(1, 11)));
+    public static List<CartItem> createCartItemsForSave(List<Item> items) {
+        var cartItems = new ArrayList<CartItem>();
+        for (Item item : items) {
+            cartItems.add(createCartItem(item.getId(), ThreadLocalRandom.current().nextInt(1, 11)));
         }
-        return items;
+        return cartItems;
     }
 
     public static Order createOrder(Long id, long totalSum) {
-        var order = new Order(
-                totalSum,
-                null,
-                null
-        );
+        var order = new Order(totalSum);
         order.setId(id);
         return order;
     }
@@ -92,15 +81,15 @@ public class TestDataFactory {
         return new Order(totalSum);
     }
 
-    public static List<OrderItem> createOrderItems(Order order, List<Item> items) {
+    public static OrderItem createOrderItem(long orderId, long itemId, int quantity, long priceAtOrder) {
+        return new OrderItem(orderId, itemId, quantity, priceAtOrder);
+    }
+
+    public static List<OrderItem> createOrderItems(long orderId, List<Item> items) {
         var orderItems = new ArrayList<OrderItem>();
         for (Item item : items) {
-            orderItems.add(OrderItem.builder()
-                    .order(order)
-                    .item(item)
-                    .quantity(ThreadLocalRandom.current().nextInt(1, 11))
-                    .priceAtOrder(item.getPrice())
-                    .build());
+            orderItems.add(createOrderItem(orderId, item.getId(), ThreadLocalRandom.current().nextInt(1, 11),
+                    item.getPrice()));
         }
         return orderItems;
     }

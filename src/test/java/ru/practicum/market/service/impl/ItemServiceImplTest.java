@@ -8,37 +8,28 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.CartItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.CartItem;
-import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.util.TestDataFactory;
 import ru.practicum.market.web.dto.enums.CartAction;
-import ru.practicum.market.web.dto.enums.SortMethod;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static ru.practicum.market.web.dto.enums.SortMethod.ALPHA;
 import static ru.practicum.market.web.dto.enums.SortMethod.NO;
-import static ru.practicum.market.web.dto.enums.SortMethod.PRICE;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ItemServiceImpl")
@@ -67,20 +58,19 @@ class ItemServiceImplTest {
             var sortMethod = NO;
             String search = null;
 
-            var pageable = PageRequest.of(pageNumber - 1, pageSize, getSortMethod(sortMethod));
-            var itemsPage = TestDataFactory.createItemPage(itemSize, 10, pageable);
-            var firstItem = itemsPage.getContent().getFirst();
-            when(itemRepository.findAll(any(Pageable.class))).thenReturn(itemsPage);
-            when(cartItemRepository.findByItemIds(anyList())).thenReturn(Collections.emptyList());
+            var items = TestDataFactory.createItems(itemSize);
+            var firstItem = items.getFirst();
 
-            var response = itemService.getItems(search, sortMethod, pageNumber, pageSize);
+            when(itemRepository.findAllBy(any(Pageable.class))).thenReturn(Flux.fromIterable(items));
+            when(itemRepository.count()).thenReturn(Mono.just(10L));
+            when(cartItemRepository.findByItemIdIn(anyList()))
+                    .thenReturn(Flux.just(TestDataFactory.createCartItem(firstItem.getId(), 2)));
 
-            assertThat(response).isNotNull();
-
+            var response = itemService.getItems(search, sortMethod, pageNumber, pageSize).block();
             assertThat(response.items())
                     .isNotEmpty()
                     .hasSize(Math.ceilDiv(itemSize, rowSize));
-            assertThat(response.items().getFirst().size()).isEqualTo(rowSize);
+            assertThat(response.items().getFirst()).hasSize(rowSize);
 
             assertThat(response.search()).isNull();
             assertThat(response.sort()).isEqualTo(sortMethod);
@@ -91,11 +81,11 @@ class ItemServiceImplTest {
             assertThat(responseFirstItem.description()).isEqualTo(firstItem.getDescription());
             assertThat(responseFirstItem.imgPath()).isEqualTo(firstItem.getImgPath());
             assertThat(responseFirstItem.price()).isEqualTo(firstItem.getPrice());
-            assertThat(responseFirstItem.count()).isEqualTo(0);
+            assertThat(responseFirstItem.count()).isEqualTo(2);
 
             var responsePaging = response.paging();
             assertThat(responsePaging.pageNumber()).isEqualTo(pageNumber);
-            assertThat(responsePaging.pageSize()).isEqualTo(pageSize);
+            assertThat(responsePaging.pageSize()).isEqualTo(itemSize);
             assertThat(responsePaging.hasNext()).isTrue();
             assertThat(responsePaging.hasPrevious()).isFalse();
         }
@@ -103,123 +93,38 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("search not null")
         void test2() {
-            var itemSize = 5;
-            var pageNumber = 1;
-            var pageSize = 5;
-            var rowSize = 3;
+            var itemSize = 3;
+            var pageNumber = 2;
+            var pageSize = 3;
             var sortMethod = NO;
             String search = "text";
 
-            var pageable = PageRequest.of(pageNumber - 1, pageSize, getSortMethod(sortMethod));
-            var itemsPage = TestDataFactory.createItemPage(itemSize, 10, pageable);
-            var firstItem = itemsPage.getContent().getFirst();
+            var items = TestDataFactory.createItems(itemSize);
+            var firstItem = items.getFirst();
+
             when(itemRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-                    eq(search), eq(search), any(Pageable.class))
-            ).thenReturn(itemsPage);
-            when(cartItemRepository.findByItemIds(anyList())).thenReturn(Collections.emptyList());
+                    any(), any(), any(Pageable.class)))
+                    .thenReturn(Flux.fromIterable(items));
+            when(itemRepository.countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any()))
+                    .thenReturn(Mono.just((long) itemSize));
+            when(cartItemRepository.findByItemIdIn(anyList())).thenReturn(Flux.empty());
 
-            var response = itemService.getItems(search, sortMethod, pageNumber, pageSize);
-
-            assertThat(response).isNotNull();
-
-            assertThat(response.items())
-                    .isNotEmpty()
-                    .hasSize(Math.ceilDiv(itemSize, rowSize));
-            assertThat(response.items().getFirst().size()).isEqualTo(rowSize);
-
+            var response = itemService.getItems(search, sortMethod, pageNumber, pageSize).block();
+            assertThat(response.items()).hasSize(1);
             assertThat(response.search()).isEqualTo(search);
             assertThat(response.sort()).isEqualTo(sortMethod);
 
             var responseFirstItem = response.items().getFirst().getFirst();
             assertThat(responseFirstItem.id()).isEqualTo(firstItem.getId());
-            assertThat(responseFirstItem.title()).isEqualTo(firstItem.getTitle());
-            assertThat(responseFirstItem.description()).isEqualTo(firstItem.getDescription());
-            assertThat(responseFirstItem.imgPath()).isEqualTo(firstItem.getImgPath());
-            assertThat(responseFirstItem.price()).isEqualTo(firstItem.getPrice());
             assertThat(responseFirstItem.count()).isEqualTo(0);
 
             var responsePaging = response.paging();
             assertThat(responsePaging.pageNumber()).isEqualTo(pageNumber);
-            assertThat(responsePaging.pageSize()).isEqualTo(pageSize);
-            assertThat(responsePaging.hasNext()).isTrue();
-            assertThat(responsePaging.hasPrevious()).isFalse();
-        }
-
-        @Test
-        @DisplayName("cartItems not empty")
-        void test3() {
-            var itemSize = 5;
-            var pageNumber = 1;
-            var pageSize = 5;
-            var rowSize = 3;
-            var sortMethod = PRICE;
-            var quantity = 3;
-            String search = "text";
-
-            var pageable = PageRequest.of(pageNumber - 1, pageSize, getSortMethod(sortMethod));
-            var itemsPage = TestDataFactory.createItemPage(itemSize, 10, pageable);
-            var firstItem = itemsPage.getContent().getFirst();
-            when(itemRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-                    eq(search), eq(search), any(Pageable.class))
-            ).thenReturn(itemsPage);
-            when(cartItemRepository.findByItemIds(anyList())).thenReturn(List.of(new CartItem(firstItem, quantity)));
-
-            var response = itemService.getItems(search, sortMethod, pageNumber, pageSize);
-
-            assertThat(response).isNotNull();
-
-            assertThat(response.items())
-                    .isNotEmpty()
-                    .hasSize(Math.ceilDiv(itemSize, rowSize));
-            assertThat(response.items().getFirst().size()).isEqualTo(rowSize);
-
-            assertThat(response.search()).isEqualTo(search);
-            assertThat(response.sort()).isEqualTo(sortMethod);
-
-            var responseFirstItem = response.items().getFirst().getFirst();
-            assertThat(responseFirstItem.id()).isEqualTo(firstItem.getId());
-            assertThat(responseFirstItem.title()).isEqualTo(firstItem.getTitle());
-            assertThat(responseFirstItem.description()).isEqualTo(firstItem.getDescription());
-            assertThat(responseFirstItem.imgPath()).isEqualTo(firstItem.getImgPath());
-            assertThat(responseFirstItem.price()).isEqualTo(firstItem.getPrice());
-            assertThat(responseFirstItem.count()).isEqualTo(quantity);
-
-            var responsePaging = response.paging();
-            assertThat(responsePaging.pageNumber()).isEqualTo(pageNumber);
-            assertThat(responsePaging.pageSize()).isEqualTo(pageSize);
-            assertThat(responsePaging.hasNext()).isTrue();
-            assertThat(responsePaging.hasPrevious()).isFalse();
-        }
-
-        @Test
-        @DisplayName("items empty")
-        void test4() {
-            var pageNumber = 1;
-            var pageSize = 5;
-            var sortMethod = ALPHA;
-            var pageable = PageRequest.of(pageNumber - 1, pageSize, getSortMethod(sortMethod));
-            var page = new PageImpl<Item>(Collections.emptyList(), pageable, 10);
-
-            when(itemRepository.findAll(any(Pageable.class))).thenReturn(page);
-
-            var response = itemService.getItems(null, sortMethod, pageNumber, pageSize);
-
-            assertThat(response).isNotNull();
-            assertThat(response.items()).isEmpty();
-
-            assertThat(response.search()).isNull();
-            assertThat(response.sort()).isEqualTo(sortMethod);
-
-            var responsePaging = response.paging();
-            assertThat(responsePaging.pageNumber()).isEqualTo(pageNumber);
-            assertThat(responsePaging.pageSize()).isEqualTo(pageSize);
-            assertThat(responsePaging.hasNext()).isTrue();
-            assertThat(responsePaging.hasPrevious()).isFalse();
-
-            verify(cartItemRepository, never()).findByItemIds(anyList());
+            assertThat(responsePaging.pageSize()).isEqualTo(itemSize);
+            assertThat(responsePaging.hasNext()).isFalse();
+            assertThat(responsePaging.hasPrevious()).isTrue();
         }
     }
-
 
     @Nested
     @DisplayName("getItem")
@@ -228,97 +133,64 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("ok")
         void test1() {
-            var itemId = 1L;
-            var item = TestDataFactory.createItem(itemId);
-            when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
-            when(cartItemRepository.findByItemId(anyLong())).thenReturn(Optional.empty());
+            var item = TestDataFactory.createItem(1L);
+            var quantity = 4;
+            var cartItem = new CartItem();
+            cartItem.setItemId(item.getId());
+            cartItem.setQuantity(quantity);
 
-            var response = itemService.getItem(itemId);
+            when(itemRepository.findById(item.getId())).thenReturn(Mono.just(item));
+            when(cartItemRepository.findByItemId(item.getId())).thenReturn(Mono.just(cartItem));
 
-            assertThat(response).isNotNull();
+            var response = itemService.getItem(item.getId()).block();
             assertThat(response.id()).isEqualTo(item.getId());
             assertThat(response.title()).isEqualTo(item.getTitle());
             assertThat(response.description()).isEqualTo(item.getDescription());
             assertThat(response.imgPath()).isEqualTo(item.getImgPath());
             assertThat(response.price()).isEqualTo(item.getPrice());
-            assertThat(response.count()).isEqualTo(0);
+            assertThat(response.count()).isEqualTo(quantity);
         }
 
         @Test
-        @DisplayName("ok with quantity")
+        @DisplayName("not found")
         void test2() {
-            var itemId = 1L;
-            var itemQuantity = 5;
-            var item = TestDataFactory.createItem(itemId);
-            when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
-            when(cartItemRepository.findByItemId(anyLong()))
-                    .thenReturn(Optional.of(new CartItem(item, itemQuantity)));
+            when(itemRepository.findById(1L)).thenReturn(Mono.empty());
 
-            var response = itemService.getItem(itemId);
-
-            assertThat(response).isNotNull();
-            assertThat(response.id()).isEqualTo(item.getId());
-            assertThat(response.title()).isEqualTo(item.getTitle());
-            assertThat(response.description()).isEqualTo(item.getDescription());
-            assertThat(response.imgPath()).isEqualTo(item.getImgPath());
-            assertThat(response.price()).isEqualTo(item.getPrice());
-            assertThat(response.count()).isEqualTo(itemQuantity);
-        }
-
-        @Test
-        @DisplayName("throw")
-        void test3() {
-            var itemId = 1L;
-            when(itemRepository.findById(itemId)).thenReturn(Optional.empty());
             assertThatExceptionOfType(ItemNotFoundException.class)
-                    .isThrownBy(() -> itemService.getItem(itemId));
+                    .isThrownBy(() -> itemService.getItem(1L).block());
         }
     }
-
 
     @Nested
     @DisplayName("getCart")
     class getCart {
 
         @Test
-        @DisplayName("ok")
+        @DisplayName("with items")
         void test1() {
-            var cartItem1 = TestDataFactory.createCartItem(1L, 1);
-            var cartItem2 = TestDataFactory.createCartItem(2L, 2);
+            var items = TestDataFactory.createItems(2);
+            var cartItems = List.of(
+                    TestDataFactory.createCartItem(items.get(0).getId(), 2),
+                    TestDataFactory.createCartItem(items.get(1).getId(), 3)
+            );
 
-            var totalPrice = (cartItem1.getItem().getPrice() * cartItem1.getQuantity())
-                    + (cartItem2.getItem().getPrice() * cartItem2.getQuantity());
+            when(cartItemRepository.findAll()).thenReturn(Flux.fromIterable(cartItems));
+            when(itemRepository.findByIdIn(List.of(items.get(0).getId(), items.get(1).getId())))
+                    .thenReturn(Flux.fromIterable(items));
 
-            when(cartItemRepository.findAllFetch()).thenReturn(List.of(cartItem1, cartItem2));
-
-            var response = itemService.getCart();
-
-            assertThat(response).isNotNull();
-            assertThat(response.items())
-                    .isNotEmpty()
-                    .hasSize(2);
-            assertThat(response.total()).isEqualTo(totalPrice);
-
-            var expectedItem = cartItem1.getItem();
-            var responseItem = response.items().getFirst();
-            assertThat(responseItem.id()).isEqualTo(expectedItem.getId());
-            assertThat(responseItem.title()).isEqualTo(expectedItem.getTitle());
-            assertThat(responseItem.description()).isEqualTo(expectedItem.getDescription());
-            assertThat(responseItem.imgPath()).isEqualTo(expectedItem.getImgPath());
-            assertThat(responseItem.price()).isEqualTo(expectedItem.getPrice());
-            assertThat(responseItem.count()).isEqualTo(cartItem1.getQuantity());
+            var cart = itemService.getCart().block();
+            assertThat(cart.items()).hasSize(2);
+            assertThat(cart.total()).isEqualTo(800L);
         }
 
         @Test
         @DisplayName("empty")
         void test2() {
-            when(cartItemRepository.findAllFetch()).thenReturn(Collections.emptyList());
+            when(cartItemRepository.findAll()).thenReturn(Flux.empty());
 
-            var response = itemService.getCart();
-
-            assertThat(response).isNotNull();
-            assertThat(response.items()).isEmpty();
-            assertThat(response.total()).isEqualTo(0);
+            var cart = itemService.getCart().block();
+            assertThat(cart.items()).isEmpty();
+            assertThat(cart.total()).isZero();
         }
     }
 
@@ -326,114 +198,86 @@ class ItemServiceImplTest {
     @DisplayName("updateItemsCountInCart")
     class updateItemsCountInCart {
 
-        @Nested
-        @DisplayName("increment")
-        class increment {
+        @Test
+        @DisplayName("plus")
+        void test1() {
+            var itemId = 1L;
+            var item = TestDataFactory.createItem(itemId);
+            var savedCartItem = TestDataFactory.createCartItem(itemId, 1);
 
-            @Test
-            @DisplayName("quantity = 0")
-            void test1() {
-                when(cartItemRepository.findByItemId(1L)).thenReturn(Optional.empty());
-                when(itemRepository.findById(1L)).thenReturn(Optional.of(TestDataFactory.createItem(1L)));
+            when(itemRepository.findById(itemId)).thenReturn(Mono.just(item));
+            when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.empty());
+            when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(savedCartItem));
 
-                itemService.updateItemsCountInCart(1L, CartAction.PLUS);
+            itemService.updateItemsCountInCart(itemId, CartAction.PLUS).block();
 
-                verify(itemRepository, times(1)).findById(1L);
-
-                ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
-                verify(cartItemRepository, times(1)).save(captor.capture());
-
-                assertThat(captor.getValue().getQuantity()).isEqualTo(1);
-                assertThat(captor.getValue().getItem().getId()).isEqualTo(1L);
-            }
-
-            @Test
-            @DisplayName("quantity = 1")
-            void test2() {
-                var cartItem = Optional.of(TestDataFactory.createCartItem(1L, 1));
-                when(cartItemRepository.findByItemId(1L)).thenReturn(cartItem);
-
-                itemService.updateItemsCountInCart(1L, CartAction.PLUS);
-
-                ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
-                verify(cartItemRepository, times(1)).save(captor.capture());
-
-                assertThat(captor.getValue().getQuantity()).isEqualTo(2);
-                assertThat(captor.getValue().getItem().getId()).isEqualTo(1L);
-            }
+            ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
+            verify(cartItemRepository, times(1)).save(captor.capture());
+            assertThat(captor.getValue().getQuantity()).isEqualTo(1);
         }
 
-        @Nested
-        @DisplayName("decrement")
-        class decrement {
+        @Test
+        @DisplayName("minus")
+        void test2() {
+            var itemId = 1L;
+            var cartItem = TestDataFactory.createCartItem(itemId, 2);
 
-            @Test
-            @DisplayName("quantity = 0")
-            void test1() {
-                when(cartItemRepository.findByItemId(1L)).thenReturn(Optional.empty());
-                assertThatExceptionOfType(CartItemNotFoundException.class)
-                        .isThrownBy(() -> itemService.updateItemsCountInCart(1L, CartAction.MINUS))
-                        .withMessage("Cart item with id = 1 not found.");
-            }
+            when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.just(cartItem));
+            when(cartItemRepository.save(any(CartItem.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-            @Test
-            @DisplayName("quantity = 1")
-            void test2() {
-                var cartItem = Optional.of(TestDataFactory.createCartItem(1L, 1));
-                when(cartItemRepository.findByItemId(1L)).thenReturn(cartItem);
+            itemService.updateItemsCountInCart(itemId, CartAction.MINUS).block();
 
-                itemService.updateItemsCountInCart(1L, CartAction.MINUS);
-
-                verify(cartItemRepository, times(1)).delete(any(CartItem.class));
-            }
-
-            @Test
-            @DisplayName("quantity = 2")
-            void test3() {
-                var cartItem = Optional.of(TestDataFactory.createCartItem(1L, 2));
-                when(cartItemRepository.findByItemId(1L)).thenReturn(cartItem);
-
-                itemService.updateItemsCountInCart(1L, CartAction.MINUS);
-
-                ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
-                verify(cartItemRepository, times(1)).save(captor.capture());
-
-                assertThat(captor.getValue().getQuantity()).isEqualTo(1);
-                assertThat(captor.getValue().getItem().getId()).isEqualTo(1L);
-            }
+            ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
+            verify(cartItemRepository, times(1)).save(captor.capture());
+            assertThat(captor.getValue().getQuantity()).isEqualTo(1);
         }
 
-        @Nested
+        @Test
+        @DisplayName("minus to delete")
+        void test3() {
+            var itemId = 1L;
+            var cartItem = TestDataFactory.createCartItem(itemId, 1);
+
+            when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.just(cartItem));
+            when(cartItemRepository.delete(cartItem)).thenReturn(Mono.empty());
+
+            itemService.updateItemsCountInCart(itemId, CartAction.MINUS).block();
+
+            verify(cartItemRepository, times(1)).delete(cartItem);
+        }
+
+        @Test
         @DisplayName("delete")
-        class delete {
+        void test4() {
+            var itemId = 1L;
+            var cartItem = TestDataFactory.createCartItem(itemId, 2);
 
-            @Test
-            @DisplayName("ok")
-            void test1() {
-                var cartItem = Optional.of(TestDataFactory.createCartItem(1L, 10));
-                when(cartItemRepository.findByItemId(1L)).thenReturn(cartItem);
+            when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.just(cartItem));
+            when(cartItemRepository.delete(cartItem)).thenReturn(Mono.empty());
 
-                itemService.updateItemsCountInCart(1L, CartAction.DELETE);
+            itemService.updateItemsCountInCart(itemId, CartAction.DELETE).block();
 
-                verify(cartItemRepository, times(1)).delete(any(CartItem.class));
-            }
-
-            @Test
-            @DisplayName("throw")
-            void test2() {
-                when(cartItemRepository.findByItemId(1L)).thenReturn(Optional.empty());
-                assertThatExceptionOfType(CartItemNotFoundException.class)
-                        .isThrownBy(() -> itemService.updateItemsCountInCart(1L, CartAction.DELETE))
-                        .withMessage("Cart item with id = 1 not found.");
-            }
+            verify(cartItemRepository, times(1)).delete(cartItem);
         }
-    }
 
-    private Sort getSortMethod(SortMethod sortMethod) {
-        return switch (sortMethod) {
-            case NO -> Sort.unsorted();
-            case ALPHA -> Sort.by(ALPHA.getColumnName());
-            case PRICE -> Sort.by(PRICE.getColumnName());
-        };
+        @Test
+        @DisplayName("item not found")
+        void test5() {
+            when(itemRepository.findById(1L)).thenReturn(Mono.empty());
+
+            assertThatExceptionOfType(ItemNotFoundException.class)
+                    .isThrownBy(() -> itemService.updateItemsCountInCart(1L, CartAction.PLUS).block());
+        }
+
+        @Test
+        @DisplayName("cart item not found")
+        void test6() {
+            when(cartItemRepository.findByItemId(1L)).thenReturn(Mono.empty());
+
+            assertThatExceptionOfType(CartItemNotFoundException.class)
+                    .isThrownBy(() -> itemService.updateItemsCountInCart(1L, CartAction.DELETE).block());
+
+            verify(cartItemRepository, never()).delete(any());
+        }
     }
 }
