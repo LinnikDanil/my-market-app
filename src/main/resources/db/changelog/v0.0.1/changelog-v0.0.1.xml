@@ -1,0 +1,11 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <include file="001-cart-items-add-column-version.xml" relativeToChangelogFile="true"/>
+    <include file="002-cart-items-add-fk-cascade.xml" relativeToChangelogFile="true"/>
+    <include file="003-order-add-default_timestamp.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

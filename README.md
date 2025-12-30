@@ -1,10 +1,10 @@
 # My Market App
 
-Веб-приложение витрины интернет-магазина на Spring Boot. Показывает товары с поиском, сортировкой и пагинацией, позволяет добавлять их в корзину, оформлять заказы и управлять каталогом через административную страницу. Используются Thymeleaf-шаблоны из макета спринта, базой данных управляет Liquibase.
-
+Веб-приложение витрины интернет-магазина на Spring Boot (реактивный стек). Показывает товары с поиском, сортировкой и пагинацией, позволяет добавлять их в корзину, оформлять заказы и управлять каталогом через административную страницу. Используются Thymeleaf-шаблоны, схемой базы данных управляет Liquibase.
 ## Стек и архитектура
-- Java 21, Gradle, Spring Boot 3.5 (Web MVC, Data JPA, Validation, Thymeleaf).
-- PostgreSQL с миграциями Liquibase; в тестах — Testcontainers.
+- Java 21, Gradle, Spring Boot 3.5 (WebFlux, Data R2DBC, Validation, Thymeleaf).
+- PostgreSQL с миграциями Liquibase; реактивный доступ через R2DBC, в тестах — Testcontainers.
+- Embedded Netty как встроенный веб-сервер.
 - Log4j2 для логирования.
 - Docker/Docker Compose для контейнеризации приложения и базы.
 
@@ -29,8 +29,10 @@
 Понадобятся Java 21, Docker Compose и доступный экземпляр PostgreSQL. Переменные среды, которые читает приложение:
 
 - `DATASOURCE_SCHEMA_NAME` — схема БД.
-- `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` — параметры подключения к PostgreSQL.
-- `SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE`, `SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE` — ограничения на загрузку файлов.
+- `SPRING_R2DBC_URL`, `SPRING_R2DBC_USERNAME`, `SPRING_R2DBC_PASSWORD` — параметры подключения через R2DBC.
+- `SPRING_LIQUIBASE_URL`, `SPRING_LIQUIBASE_USER`, `SPRING_LIQUIBASE_PASSWORD` — параметры подключения Liquibase (JDBC).
+- `SPRING_WEBFLUX_MULTIPART_MAX_IN_MEMORY_SIZE`, `SPRING_WEBFLUX_MULTIPART_MAX_DISK_USAGE_PER_PART`, `SPRING_WEBFLUX_MULTIPART_MAX_PARTS` — ограничения на загрузку файлов.
+- `SPRING_CODEC_MAX_IN_MEMORY_SIZE` — лимит размера буфера кодеков WebFlux.
 - `IMAGE_PATH` — каталог для сохранения загружаемых изображений (создаётся автоматически).
 - `LOGGING_PRACTICUM_LEVEL` — уровень логирования пакета `ru.practicum`.
 
@@ -52,7 +54,7 @@
 5. Приложение будет доступно на http://localhost:8080, миграции Liquibase применяются автоматически.
 
 ## Запуск в Docker
-Полностью контейнеризованный вариант (приложение + БД):
+Полностью контейнеризованный вариант (приложение + БД). В `docker-compose.yml` уже заданы `SPRING_R2DBC_*`, `SPRING_LIQUIBASE_*` и ограничения WebFlux — при необходимости скорректируйте их под свою БД и размеры загрузок:
 ```bash
 ./gradlew clean build
 docker compose up --build

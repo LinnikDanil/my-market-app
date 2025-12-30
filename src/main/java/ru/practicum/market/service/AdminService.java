@@ -1,14 +1,14 @@
 package ru.practicum.market.service;
 
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.codec.multipart.FilePart;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.practicum.market.web.dto.ItemShortResponseDto;
 
-import java.util.List;
-
 public interface AdminService {
-    void uploadItems(MultipartFile file);
+    Mono<Void> uploadItems(FilePart file);
 
-    void uploadImage(long id, MultipartFile image);
+    Mono<Void> uploadImage(long id, FilePart image);
 
-    List<ItemShortResponseDto> getAllItems();
+    Flux<ItemShortResponseDto> getAllItems();
 }

@@ -8,5 +8,5 @@ public final class PostgresContainer {
 
     @Container
     @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:latest");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:latest");
 }

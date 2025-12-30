@@ -34,7 +34,7 @@
     </changeSet>
 
     <changeSet id="create_cart_items_foreign_key_items" author="DLinnik">
-        <preConditions>
+        <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
                 <foreignKeyConstraintExists foreignKeyName="fk_cart_items_item"/>
             </not>
@@ -47,7 +47,7 @@
                                  referencedColumnNames="id"/>
 
         <rollback>
-            <dropForeignKeyConstraint baseTableName="cart_items" constraintName="fk_cart_items_items"/>
+            <dropForeignKeyConstraint baseTableName="cart_items" constraintName="fk_cart_items_item"/>
         </rollback>
     </changeSet>
 

@@ -1,13 +1,13 @@
 package ru.practicum.market.service;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.practicum.market.web.dto.OrderResponseDto;
 
-import java.util.List;
-
 public interface OrderService {
-    List<OrderResponseDto> getOrders();
+    Flux<OrderResponseDto> getOrders();
 
-    OrderResponseDto getOrder(long id);
+    Mono<OrderResponseDto> getOrder(long id);
 
-    long createOrder();
+    Mono<Long> createOrder();
 }

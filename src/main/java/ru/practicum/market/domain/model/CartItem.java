@@ -1,11 +1,5 @@
 package ru.practicum.market.domain.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,27 +7,33 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 /**
  * Так, как проект учебный, то корзина одна.
  * На боевом проекте использовал бы userId для разделения корзин между пользователями
  */
-@Entity
 @Table(name = "cart_items")
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true, callSuper = true)
+@ToString(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CartItem extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id", referencedColumnName = "id")
-    Item item;
+    @Column("item_id")
+    Long itemId;
 
-    @Column(nullable = false)
-    @ToString.Include
     int quantity;
 
+    @Version
+    Long version;
+
+    public CartItem(Long itemId) {
+        this.itemId = itemId;
+        this.quantity = 0;
+    }
 }

@@ -1,0 +1,36 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="add_cart_items_fk_cascade_to_item" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <foreignKeyConstraintExists foreignKeyName="fk_cart_items_item"/>
+        </preConditions>
+
+
+        <dropForeignKeyConstraint baseTableName="cart_items"
+                                  constraintName="fk_cart_items_item"/>
+
+        <addForeignKeyConstraint baseTableName="cart_items"
+                                 baseColumnNames="item_id"
+                                 constraintName="fk_cart_items_cascade_item"
+                                 referencedTableName="items"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="cart_items"
+                                      constraintName="fk_cart_items_cascade_item"/>
+
+            <addForeignKeyConstraint baseTableName="cart_items"
+                                     baseColumnNames="item_id"
+                                     constraintName="fk_cart_items_item"
+                                     referencedTableName="items"
+                                     referencedColumnNames="id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

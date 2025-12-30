@@ -1,0 +1,23 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="add_order_default_timestamp" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <columnExists tableName="orders" columnName="created_at"/>
+        </preConditions>
+
+        <addDefaultValue tableName="orders"
+                         columnName="created_at"
+                         defaultValueComputed="CURRENT_TIMESTAMP"/>
+
+        <rollback>
+            <dropDefaultValue tableName="orders"
+                              columnName="created_at"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

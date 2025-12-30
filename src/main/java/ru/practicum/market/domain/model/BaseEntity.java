@@ -1,33 +1,27 @@
 package ru.practicum.market.domain.model;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.Hibernate;
+import org.springframework.data.annotation.Id;
 
-@MappedSuperclass
 @Getter
 @Setter
 public abstract class BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || Hibernate.getClass(this) != Hibernate.getClass(obj)) return false;
+        if (obj == null || getClass() != obj.getClass()) return false;
         BaseEntity other = (BaseEntity) obj;
         if (id == null || other.id == null) return false;
         return id.equals(other.id);
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         if (id != null) return id.hashCode();
         return System.identityHashCode(this);
     }

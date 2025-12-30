@@ -4,8 +4,11 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.domain.model.Item;
 
@@ -21,13 +24,27 @@ public class ExcelConverter {
     private static final String TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final String SHEET = "Items";
 
-    public void checkExcelFormat(MultipartFile file) {
-        if (!TYPE.equals(file.getContentType())) {
+    public void checkExcelFormat(FilePart file) {
+        var contentType = file.headers().getContentType();
+        if (contentType == null || !TYPE.equals(contentType.toString())) {
             throw new ItemUploadException("Please upload an excel file!");
         }
     }
 
-    public List<Item> excelToItemList(InputStream is) {
+    public Mono<List<Item>> excelToItemList(FilePart file) {
+        return DataBufferUtils.join(file.content())
+                .flatMap(dataBuffer -> Mono.fromCallable(() -> {
+                            try (InputStream is = dataBuffer.asInputStream()) {
+                                return parseWorkbook(is);
+                            } finally {
+                                DataBufferUtils.release(dataBuffer);
+                            }
+                        })
+                        .subscribeOn(Schedulers.boundedElastic())
+                );
+    }
+
+    private List<Item> parseWorkbook(InputStream is) {
         try (Workbook workbook = new XSSFWorkbook(is)) {
             var sheet = workbook.getSheet(SHEET);
             if (sheet == null) {
@@ -62,7 +79,7 @@ public class ExcelConverter {
 
             return itemList;
         } catch (IOException e) {
-            throw new RuntimeException("fail to parse Excel file: " + e.getMessage());
+            throw new ItemUploadException("Fail to parse Excel file: " + e.getMessage(), e);
         }
     }
 
