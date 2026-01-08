@@ -16,14 +16,15 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
 
-  app:
+  market-app:
     container_name: market-app
     build:
-      context: .
+      context: ./market
       dockerfile: Dockerfile
     image: market-app
     restart: on-failure
     environment:
+      - SERVER_PORT=8080
       - DATASOURCE_SCHEMA_NAME=public
       - SPRING_R2DBC_URL=r2dbc:postgresql://db:5432/market
       - SPRING_R2DBC_USERNAME=postgres
@@ -36,11 +37,31 @@ services:
       - SPRING_WEBFLUX_MULTIPART_MAX_IN_MEMORY_SIZE=1MB
       - SPRING_WEBFLUX_MULTIPART_MAX_PARTS=256
       - SPRING_CODEC_MAX_IN_MEMORY_SIZE=2MB
-      - IMAGE_PATH=images
+      - IMAGE_PATH=/market-app/images
     ports:
       - "8080:8080"
+    volumes:
+      - ./images:/market-app/images
     depends_on:
       - db
+      - payments-app
+
+  payments-app:
+    container_name: payments-app
+    build:
+      context: ./payments
+      dockerfile: Dockerfile
+    image: payments-app
+    restart: on-failure
+    environment:
+      - SERVER_PORT=8081
+      - LOGGING_PRACTICUM_LEVEL=DEBUG
+      - SPRING_WEBFLUX_MULTIPART_MAX_DISK_USAGE_PER_PART=10MB
+      - SPRING_WEBFLUX_MULTIPART_MAX_IN_MEMORY_SIZE=1MB
+      - SPRING_WEBFLUX_MULTIPART_MAX_PARTS=256
+      - SPRING_CODEC_MAX_IN_MEMORY_SIZE=2MB
+    ports:
+      - "8081:8081"
 
 volumes:
   db-data:

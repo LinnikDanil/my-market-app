@@ -1,6 +1,9 @@
+server:
+  port: ${SERVER_PORT}
+
 spring:
   application:
-    name: my-market-app
+    name: market
 
   r2dbc:
     url: ${SPRING_R2DBC_URL}
