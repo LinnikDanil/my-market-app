@@ -27,6 +27,14 @@ spring:
     codecs:
       max-in-memory-size: ${SPRING_CODEC_MAX_IN_MEMORY_SIZE}
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+  cache:
+    redis:
+      time-to-live: ${REDIS_TTL}
+
 logging:
   level:
     ru:

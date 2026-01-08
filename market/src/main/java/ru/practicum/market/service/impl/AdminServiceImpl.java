@@ -3,6 +3,8 @@ package ru.practicum.market.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +15,6 @@ import reactor.core.scheduler.Schedulers;
 import ru.practicum.market.domain.exception.ItemImageBadRequest;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemUploadException;
-import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.AdminService;
 import ru.practicum.market.service.converter.ExcelConverter;
@@ -23,7 +24,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.UUID;
 
 @Service
@@ -44,6 +44,7 @@ public class AdminServiceImpl implements AdminService {
      * @return сигнал завершения загрузки
      */
     @Override
+    @CacheEvict(value = "items-page", allEntries = true)
     @Transactional
     public Mono<Void> uploadItems(FilePart file) {
         excelConverter.checkExcelFormat(file);
@@ -69,6 +70,12 @@ public class AdminServiceImpl implements AdminService {
      * @return сигнал завершения загрузки
      */
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "item", key = "#id"),
+                    @CacheEvict(value = "items-page", allEntries = true)
+            }
+    )
     @Transactional
     public Mono<Void> uploadImage(long id, FilePart image) {
         log.debug("Uploading image for itemId={}", id);

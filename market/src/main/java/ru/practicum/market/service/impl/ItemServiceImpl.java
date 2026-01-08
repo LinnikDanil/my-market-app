@@ -8,17 +8,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetrySpec;
 import ru.practicum.market.domain.exception.CartItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.CartItem;
-import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.ItemService;
+import ru.practicum.market.service.cache.impl.ItemCacheServiceImpl;
+import ru.practicum.market.service.cache.dto.ItemCacheDto;
 import ru.practicum.market.web.dto.CartResponseDto;
 import ru.practicum.market.web.dto.ItemResponseDto;
 import ru.practicum.market.web.dto.ItemsResponseDto;
@@ -28,7 +28,6 @@ import ru.practicum.market.web.dto.enums.SortMethod;
 import ru.practicum.market.web.mapper.ItemMapper;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import static ru.practicum.market.web.dto.enums.SortMethod.ALPHA;
@@ -41,6 +40,7 @@ public class ItemServiceImpl implements ItemService {
 
     private static final int ITEMS_IN_ROW = 3;
 
+    private final ItemCacheServiceImpl itemCacheService;
     private final ItemRepository itemRepository;
     private final CartItemRepository cartItemRepository;
 
@@ -58,27 +58,14 @@ public class ItemServiceImpl implements ItemService {
         };
         var pageable = PageRequest.of(pageNumber - 1, pageSize, sort);
 
-        Mono<List<Item>> itemsMono;
-        Mono<Long> itemsCountMono;
-        if (StringUtils.hasText(search)) {
-            itemsMono = itemRepository
-                    .findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search, pageable)
-                    .collectList();
-            itemsCountMono = itemRepository
-                    .countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(search, search);
-        } else {
-            itemsMono = itemRepository.findAllBy(pageable).collectList();
-            itemsCountMono = itemRepository.count();
-        }
-
-        return Mono.zip(itemsMono, itemsCountMono)
-                .flatMap(tuple -> {
-                    var items = tuple.getT1();
-                    var itemsCount = tuple.getT2();
+        return itemCacheService.getItemsPage(search, pageable)
+                .flatMap(itemsPage -> {
+                    var items = itemsPage.items();
+                    var itemsCount = itemsPage.itemsCount();
 
                     Mono<Map<Long, Integer>> quantityForItemMono = items.isEmpty()
                             ? Mono.just(Map.of())
-                            : cartItemRepository.findByItemIdIn(items.stream().map(Item::getId).toList())
+                            : cartItemRepository.findByItemIdIn(items.stream().map(ItemCacheDto::id).toList())
                             .collectMap(CartItem::getItemId, CartItem::getQuantity);
 
                     return quantityForItemMono.map(quantityForItem -> {
@@ -87,7 +74,7 @@ public class ItemServiceImpl implements ItemService {
 
                         log.debug("Items response prepared with {} rows", itemRows.size());
 
-                        var paging = convertToPaging(items, itemsCount, pageable);
+                        var paging = convertToPaging(items.size(), itemsCount, pageable);
 
                         return new ItemsResponseDto(itemRows, search, sortMethod, paging);
                     });
@@ -99,7 +86,7 @@ public class ItemServiceImpl implements ItemService {
     public Mono<ItemResponseDto> getItem(long id) {
         log.debug("Request to fetch item with id={}", id);
 
-        return findItem(id)
+        return itemCacheService.findItem(id)
                 .flatMap(item ->
                         cartItemRepository.findByItemId(id)
                                 .map(CartItem::getQuantity)
@@ -123,9 +110,8 @@ public class ItemServiceImpl implements ItemService {
                     }
 
                     var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
-                    return itemRepository.findByIdIn(itemIds)
-                            .collectList()
-                            .map(items -> ItemMapper.toCart(cartItems, items));
+                    return itemCacheService.getItemsByIds(itemIds)
+                            .map(cartCache -> ItemMapper.toCart(cartItems, cartCache.items()));
                 });
     }
 
@@ -208,15 +194,10 @@ public class ItemServiceImpl implements ItemService {
                                 itemId, retrySignal.totalRetries() + 1));
     }
 
-    private Mono<Item> findItem(long id) {
-        return itemRepository.findById(id)
-                .switchIfEmpty(Mono.error(new ItemNotFoundException(id, "Item with id = %d not found.".formatted(id))));
-    }
-
-    private Paging convertToPaging(List<Item> items, long itemsCount, Pageable pageable) {
+    private Paging convertToPaging(long itemsSize, long itemsCount, Pageable pageable) {
         var pageNumber = pageable.getPageNumber() + 1;
         var hasPreviousPage = pageNumber > 1;
-        var hasNextPage = pageable.getOffset() + items.size() < itemsCount;
+        var hasNextPage = pageable.getOffset() + itemsSize < itemsCount;
 
         return new Paging(pageable.getPageSize(), pageNumber, hasPreviousPage, hasNextPage);
     }
