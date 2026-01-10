@@ -22,3 +22,5 @@ REDIS_PORT: 6379
 REDIS_TTL: PT1M
 
 IMAGE_PATH: images
+
+PAYMENTS_BASE_URL: 'http://localhost:8081'

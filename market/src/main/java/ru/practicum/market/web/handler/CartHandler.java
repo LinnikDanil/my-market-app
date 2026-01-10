@@ -25,7 +25,8 @@ public class CartHandler {
                                 .contentType(MediaType.TEXT_HTML)
                                 .render("cart", Map.of(
                                         "items", cart.items(),
-                                        "total", cart.total()
+                                        "total", cart.total(),
+                                        "isActive", cart.isActiveButton()
                                 ))
                 );
     }

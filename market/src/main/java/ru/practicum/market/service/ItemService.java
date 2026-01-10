@@ -15,4 +15,6 @@ public interface ItemService {
     Mono<Void> updateItemsCountInCart(long id, CartAction action);
 
     Mono<CartResponseDto> getCart();
+
+    Mono<CartResponseDto> getCartWithoutPayments();
 }

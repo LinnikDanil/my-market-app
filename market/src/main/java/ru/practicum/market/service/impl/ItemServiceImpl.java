@@ -14,6 +14,7 @@ import reactor.util.retry.RetrySpec;
 import ru.practicum.market.domain.exception.CartItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.CartItem;
+import ru.practicum.market.integration.PaymentAdapter;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.ItemService;
@@ -27,6 +28,7 @@ import ru.practicum.market.web.dto.enums.CartAction;
 import ru.practicum.market.web.dto.enums.SortMethod;
 import ru.practicum.market.web.mapper.ItemMapper;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Map;
 
@@ -43,6 +45,7 @@ public class ItemServiceImpl implements ItemService {
     private final ItemCacheServiceImpl itemCacheService;
     private final ItemRepository itemRepository;
     private final CartItemRepository cartItemRepository;
+    private final PaymentAdapter paymentAdapter;
 
     @Override
     @Transactional(readOnly = true)
@@ -106,12 +109,40 @@ public class ItemServiceImpl implements ItemService {
                     log.debug("Cart contains {} items", cartItems.size());
 
                     if (cartItems.isEmpty()) {
-                        return Mono.just(new CartResponseDto(Collections.emptyList(), 0));
+                        return Mono.just(new CartResponseDto(Collections.emptyList(), 0, false));
+                    }
+
+                    var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
+
+
+                    var cartCacheMono = itemCacheService.getItemsByIds(itemIds);
+                    var currentBalanceMono = paymentAdapter.getBalance();
+
+                    return Mono.zip(cartCacheMono, currentBalanceMono)
+                            .map(t -> {
+                                var cartCache = t.getT1();
+                                var currentBalance = t.getT2().balance();
+                                return ItemMapper.toCart(cartItems, cartCache.items(), currentBalance);
+                            });
+                });
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public Mono<CartResponseDto> getCartWithoutPayments() {
+        log.debug("Request to fetch cart");
+
+        return cartItemRepository.findAll().collectList()
+                .flatMap(cartItems -> {
+                    log.debug("Cart contains {} items", cartItems.size());
+
+                    if (cartItems.isEmpty()) {
+                        return Mono.just(new CartResponseDto(Collections.emptyList(), 0, false));
                     }
 
                     var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
                     return itemCacheService.getItemsByIds(itemIds)
-                            .map(cartCache -> ItemMapper.toCart(cartItems, cartCache.items()));
+                            .map(cartCache -> ItemMapper.toCart(cartItems, cartCache.items(), BigDecimal.ZERO));
                 });
     }
 

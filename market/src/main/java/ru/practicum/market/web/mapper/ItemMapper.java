@@ -9,6 +9,7 @@ import ru.practicum.market.service.cache.dto.ItemsPageCacheDto;
 import ru.practicum.market.web.dto.CartResponseDto;
 import ru.practicum.market.web.dto.ItemResponseDto;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,7 @@ public class ItemMapper {
         return itemRows;
     }
 
-    public static CartResponseDto toCart(List<CartItem> cartItems, List<ItemCacheDto> itemsInCart) {
+    public static CartResponseDto toCart(List<CartItem> cartItems, List<ItemCacheDto> itemsInCart, BigDecimal currentBalance) {
         var itemById = itemsInCart.stream()
                 .collect(Collectors.toMap(ItemCacheDto::id, item -> item));
         var quantityByItemId = cartItems.stream()
@@ -54,8 +55,10 @@ public class ItemMapper {
         var itemsResponseDto = quantityByItemId.entrySet().stream()
                 .map(iq -> toItemResponseDto(itemById.get(iq.getKey()), iq.getValue()))
                 .toList();
+        var totalSum = calculateTotalSum(quantityByItemId, itemById);
+        var isActive = currentBalance.compareTo(BigDecimal.valueOf(totalSum)) >= 0;
 
-        return new CartResponseDto(itemsResponseDto, calculateTotalSum(quantityByItemId, itemById));
+        return new CartResponseDto(itemsResponseDto, totalSum, isActive);
     }
 
     public static ItemsPageCacheDto toItemsPage(List<Item> items, Long itemsCount) {

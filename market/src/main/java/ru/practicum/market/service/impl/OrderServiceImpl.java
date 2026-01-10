@@ -11,6 +11,8 @@ import ru.practicum.market.domain.exception.OrderNotFoundException;
 import ru.practicum.market.domain.model.CartItem;
 import ru.practicum.market.domain.model.Order;
 import ru.practicum.market.domain.model.OrderItem;
+import ru.practicum.market.integration.PaymentAdapter;
+import ru.practicum.market.integration.dto.HoldRq;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.repository.OrderItemRepository;
@@ -18,6 +20,8 @@ import ru.practicum.market.repository.OrderRepository;
 import ru.practicum.market.service.OrderService;
 import ru.practicum.market.web.dto.OrderResponseDto;
 import ru.practicum.market.web.mapper.OrderMapper;
+
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
     private final ItemRepository itemRepository;
+    private final PaymentAdapter paymentAdapter;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,20 +91,40 @@ public class OrderServiceImpl implements OrderService {
                     var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
 
                     return itemRepository.findByIdIn(itemIds).collectList()
-                            .flatMap(items -> orderRepository.save(OrderMapper.toOrder(cartItems, items))
-                                    .flatMap(savedOrder -> {
-                                        var orderId = savedOrder.getId();
-                                        log.debug("Order created with id={} and {} items", orderId, cartItems.size());
-                                        var orderItems = OrderMapper.toOrderItems(cartItems, items, orderId);
+                            .flatMap(items -> {
+                                var order = OrderMapper.toOrder(cartItems, items);
+                                var amount = BigDecimal.valueOf(order.getTotalSum());
+                                var holdRq = new HoldRq(amount);
+                                return paymentAdapter.hold(holdRq)
+                                        .onErrorResume(Mono::error)
+                                        .flatMap(holdRs ->
+                                                orderRepository.save(order)
+                                                        .flatMap(savedOrder -> {
+                                                            var orderId = savedOrder.getId();
+                                                            log.debug("Order created with id={} and {} items", orderId, cartItems.size());
+                                                            var orderItems = OrderMapper.toOrderItems(cartItems, items, orderId);
 
-                                        return orderItemRepository.saveAll(orderItems)
-                                                .doOnComplete(() -> log.debug("Saved {} order items for order {}", orderItems.size(), orderId))
-                                                .then(cartItemRepository.deleteAll()
-                                                        .doOnSuccess(v -> log.debug("Cart items cleared after order creation"))
-                                                )
-                                                .thenReturn(orderId);
-                                    })
-                            );
+                                                            return orderItemRepository.saveAll(orderItems)
+                                                                    .doOnComplete(() -> log.debug("Saved {} order items for order {}", orderItems.size(), orderId))
+                                                                    .then(cartItemRepository.deleteAll()
+                                                                            .doOnSuccess(v -> log.debug("Cart items cleared after order creation"))
+                                                                    )
+                                                                    .then(paymentAdapter.confirm(holdRs.paymentId())
+                                                                            .onErrorResume(Mono::error))
+                                                                    .thenReturn(orderId);
+                                                        })
+                                                        .onErrorResume(ex -> {
+                                                            log.warn("DB failed. Start refund payment", ex);
+                                                            return paymentAdapter.cancel(holdRs.paymentId())
+                                                                    .onErrorResume(refundEx -> {
+                                                                        log.error("DB and refund failed", refundEx);
+                                                                        return Mono.empty();
+                                                                    })
+                                                                    .then(Mono.error(ex));
+                                                        })
+                                        );
+
+                            });
                 });
     }
 }

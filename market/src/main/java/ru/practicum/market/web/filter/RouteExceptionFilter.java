@@ -1,10 +1,12 @@
 package ru.practicum.market.web.filter;
 
 import jakarta.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.server.HandlerFilterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -15,12 +17,19 @@ import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.domain.exception.MarketBadRequestException;
 import ru.practicum.market.domain.exception.NotFoundExceptionAbstract;
 import ru.practicum.market.domain.exception.OrderConflictException;
+import ru.practicum.market.integration.exception.PaymentBalanceException;
+import ru.practicum.market.integration.exception.PaymentIdNotFoundException;
+import ru.practicum.market.integration.exception.PaymentServiceUnavailableException;
+import ru.practicum.market.service.ItemService;
 
 import java.util.Map;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class RouteExceptionFilter {
+
+    private final ItemService itemService;
 
     public HandlerFilterFunction<ServerResponse, ServerResponse> errors() {
         return (request, next) ->
@@ -35,9 +44,46 @@ public class RouteExceptionFilter {
 
                         .onErrorResume(NotFoundExceptionAbstract.class, e -> notFound(e, request))
 
+                        .onErrorResume(PaymentIdNotFoundException.class, e -> paymentNofFound(e, request))
+                        .onErrorResume(PaymentBalanceException.class, e -> insufficientFunds(e, request))
+                        .onErrorResume(WebClientRequestException.class, e -> paymentServiceUnavailable(e, request))
+                        .onErrorResume(PaymentServiceUnavailableException.class, e -> paymentServiceUnavailable(e, request))
+
                         .onErrorResume(OrderConflictException.class, e -> conflict(e, request))
 
                         .onErrorResume(Exception.class, e -> oops(e, request));
+    }
+
+    private Mono<ServerResponse> paymentNofFound(RuntimeException e, ServerRequest request) {
+        logException(e);
+        return ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).render("payment-not-found");
+    }
+
+    private Mono<ServerResponse> insufficientFunds(PaymentBalanceException e, ServerRequest request) {
+        logException(e);
+
+        return itemService.getCartWithoutPayments()
+                .flatMap(cart -> ServerResponse
+                        .status(HttpStatus.CONFLICT)
+                        .render("cart", Map.of(
+                                "items", cart.items(),
+                                "total", cart.total(),
+                                "isActive", false
+                        )));
+    }
+
+    private Mono<ServerResponse> paymentServiceUnavailable(RuntimeException e, ServerRequest request) {
+        logException(e);
+
+        return itemService.getCartWithoutPayments()
+                .flatMap(cart -> ServerResponse
+                        .status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .render("cart", Map.of(
+                                "items", cart.items(),
+                                "total", cart.total(),
+                                "isActive", false,
+                                "message", "Сервис платежей не доступен. Попробуйте позже."
+                        )));
     }
 
     private Mono<ServerResponse> oops(Exception e, ServerRequest request) {
@@ -67,7 +113,7 @@ public class RouteExceptionFilter {
     }
 
     private void logException(Exception e) {
-        log.error("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage());
+        log.warn("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage());
     }
 
 }

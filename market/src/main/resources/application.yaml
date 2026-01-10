@@ -42,3 +42,7 @@ logging:
 
 image:
   path: ${IMAGE_PATH}
+
+integration:
+  payments:
+    baseUrl: ${PAYMENTS_BASE_URL}
