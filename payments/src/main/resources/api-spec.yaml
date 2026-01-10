@@ -29,7 +29,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
-      operationId: postBalance
+      operationId: replenishBalance
       summary: Пополнить баланс
       requestBody:
         required: true
@@ -53,21 +53,91 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/payments/payment:
+  /api/payments/hold:
     post:
-      operationId: postPayment
-      summary: Осуществить платёж
+      operationId: holdPayment
+      summary: Заморозить сумму для списания
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Payment'
+              $ref: '#/components/schemas/HoldRq'
       responses:
         '200':
-          description: Успешный ответ
+          description: Сумма заморожена, возвращён paymentId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HoldRs"
         '409':
           description: Недостаточно средств на балансе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервиса платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис платежей недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/confirm/{paymentId}:
+    post:
+      operationId: confirmPayment
+      summary: Списать сумму платежа с баланса
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Платёж подтверждён
+        '404':
+          description: PaymentId не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервиса платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис платежей недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/cancel/{paymentId}:
+    post:
+      operationId: cancelPayment
+      summary: Отмена платежа
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Hold отменён
+        '404':
+          description: PaymentId не найден
           content:
             application/json:
               schema:
@@ -89,7 +159,7 @@ components:
   schemas:
     Payment:
       type: object
-      required: [amount]
+      required: [ amount ]
       properties:
         amount:
           type: number
@@ -97,9 +167,28 @@ components:
           multipleOf: 0.01
           example: 599.09
 
+    HoldRq:
+      type: object
+      required: [ amount ]
+      properties:
+        amount:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+          example: 599.09
+
+    HoldRs:
+      type: object
+      required: [ paymentId ]
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+          example: 77773761-62d4-46ab-b029-72cc58622bcc
+
     Balance:
       type: object
-      required: [balance]
+      required: [ balance ]
       properties:
         balance:
           type: number
@@ -109,7 +198,7 @@ components:
 
     ErrorResponse:
       type: object
-      required: [code, message]
+      required: [ code, message ]
       properties:
         code:
           type: string
