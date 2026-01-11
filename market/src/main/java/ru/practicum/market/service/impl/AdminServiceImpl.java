@@ -100,7 +100,7 @@ public class AdminServiceImpl implements AdminService {
                                     .thenReturn(destination))
                             .flatMap(destination -> {
                                 // Сохраняем относительный путь изображения в товаре.
-                                item.setImgPath("/" + imagePath + "/" + destination.safeFileName());
+                                item.setImgPath("/images/" + destination.safeFileName());
                                 return itemRepository.save(item)
                                         .thenReturn(destination);
                             })

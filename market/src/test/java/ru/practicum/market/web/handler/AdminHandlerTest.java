@@ -22,6 +22,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.service.AdminService;
+import ru.practicum.market.service.ItemService;
 import ru.practicum.market.web.bind.QueryBinder;
 import ru.practicum.market.web.dto.ItemShortResponseDto;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
@@ -46,6 +47,9 @@ class AdminHandlerTest {
 
     @Autowired
     private WebTestClient webTestClient;
+
+    @MockitoBean
+    private ItemService itemService;
 
     @MockitoBean
     private AdminService adminService;

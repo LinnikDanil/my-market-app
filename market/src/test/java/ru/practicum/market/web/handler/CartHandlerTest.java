@@ -66,7 +66,7 @@ class CartHandlerTest {
     @DisplayName("getCart")
     void test1() {
         var items = TestDataFactory.createItemResponseDtos(2);
-        var cart = new CartResponseDto(items, 500L);
+        var cart = new CartResponseDto(items, 500L, true);
         when(itemService.getCart()).thenReturn(Mono.just(cart));
 
         webTestClient.get()
@@ -84,7 +84,7 @@ class CartHandlerTest {
         var action = CartAction.PLUS;
         var id = 5L;
         var items = TestDataFactory.createItemResponseDtos(3);
-        var cart = new CartResponseDto(items, 800L);
+        var cart = new CartResponseDto(items, 800L, true);
         when(binder.bindParamId(any())).thenReturn(id);
         when(binder.bindParamAction(any())).thenReturn(action);
         when(itemService.updateItemsCountInCart(id, action)).thenReturn(Mono.empty());

@@ -6,11 +6,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import ru.practicum.market.util.PostgresContainer;
+import ru.practicum.market.util.TestCacheConfig;
 import ru.practicum.market.util.TestDataFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @ImportTestcontainers(PostgresContainer.class)
 @DisplayName("ItemRepository")
+@Import(TestCacheConfig.class)
 class ItemRepositoryIT {
 
     @Autowired

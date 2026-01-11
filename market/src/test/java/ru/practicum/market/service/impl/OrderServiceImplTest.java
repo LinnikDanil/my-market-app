@@ -11,17 +11,20 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.OrderConflictException;
 import ru.practicum.market.domain.exception.OrderNotFoundException;
-import ru.practicum.market.domain.model.CartItem;
-import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.domain.model.Order;
 import ru.practicum.market.domain.model.OrderItem;
+import ru.practicum.market.integration.PaymentAdapter;
+import ru.practicum.market.integration.dto.HoldRq;
+import ru.practicum.market.integration.dto.HoldRs;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.repository.OrderItemRepository;
 import ru.practicum.market.repository.OrderRepository;
 import ru.practicum.market.util.TestDataFactory;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -48,6 +51,9 @@ class OrderServiceImplTest {
 
     @Mock
     private ItemRepository itemRepository;
+
+    @Mock
+    private PaymentAdapter paymentAdapter;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -126,12 +132,15 @@ class OrderServiceImplTest {
                     TestDataFactory.createCartItem(items.get(0).getId(), 2),
                     TestDataFactory.createCartItem(items.get(1).getId(), 1)
             );
-            var order = new Order(400L);
+            var totalSum = 400L;
+            var order = new Order(totalSum);
             order.setId(5L);
             var orderItems = List.of(
                     new OrderItem(order.getId(), items.get(0).getId(), 2, items.get(0).getPrice()),
                     new OrderItem(order.getId(), items.get(1).getId(), 1, items.get(1).getPrice())
             );
+            var holdRq = new HoldRq(BigDecimal.valueOf(totalSum));
+            var holdRs = new HoldRs(UUID.randomUUID());
 
             when(cartItemRepository.findAll()).thenReturn(Flux.fromIterable(cartItems));
             when(itemRepository.findByIdIn(List.of(items.get(0).getId(), items.get(1).getId())))
@@ -139,6 +148,8 @@ class OrderServiceImplTest {
             when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
             when(orderItemRepository.saveAll(anyList())).thenReturn(Flux.fromIterable(orderItems));
             when(cartItemRepository.deleteAll()).thenReturn(Mono.empty());
+            when(paymentAdapter.hold(holdRq)).thenReturn(Mono.just(holdRs));
+            when(paymentAdapter.confirm(holdRs.paymentId())).thenReturn(Mono.empty());
 
             var response = orderService.createOrder().block();
             assertThat(response).isEqualTo(order.getId());

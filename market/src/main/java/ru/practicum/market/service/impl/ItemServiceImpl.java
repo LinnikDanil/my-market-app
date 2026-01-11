@@ -18,7 +18,7 @@ import ru.practicum.market.integration.PaymentAdapter;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.ItemService;
-import ru.practicum.market.service.cache.impl.ItemCacheServiceImpl;
+import ru.practicum.market.service.cache.ItemCacheService;
 import ru.practicum.market.service.cache.dto.ItemCacheDto;
 import ru.practicum.market.web.dto.CartResponseDto;
 import ru.practicum.market.web.dto.ItemResponseDto;
@@ -42,7 +42,7 @@ public class ItemServiceImpl implements ItemService {
 
     private static final int ITEMS_IN_ROW = 3;
 
-    private final ItemCacheServiceImpl itemCacheService;
+    private final ItemCacheService itemCacheService;
     private final ItemRepository itemRepository;
     private final CartItemRepository cartItemRepository;
     private final PaymentAdapter paymentAdapter;

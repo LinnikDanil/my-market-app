@@ -15,6 +15,7 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.practicum.market.service.ItemService;
 import ru.practicum.market.service.OrderService;
 import ru.practicum.market.util.TestDataFactory;
 import ru.practicum.market.web.bind.QueryBinder;
@@ -40,6 +41,9 @@ class OrderHandlerTest {
 
     @MockitoBean
     private OrderService orderService;
+
+    @MockitoBean
+    private ItemService itemService;
 
     @MockitoBean
     private QueryBinder binder;

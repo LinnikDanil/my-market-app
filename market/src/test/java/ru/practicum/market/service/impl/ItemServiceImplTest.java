@@ -8,23 +8,30 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.CartItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.domain.model.CartItem;
+import ru.practicum.market.integration.PaymentAdapter;
+import ru.practicum.market.integration.dto.Balance;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
+import ru.practicum.market.service.cache.ItemCacheService;
+import ru.practicum.market.service.cache.dto.CartCacheDto;
+import ru.practicum.market.service.cache.dto.ItemsPageCacheDto;
 import ru.practicum.market.util.TestDataFactory;
 import ru.practicum.market.web.dto.enums.CartAction;
+import ru.practicum.market.web.mapper.ItemMapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -41,6 +48,12 @@ class ItemServiceImplTest {
     @Mock
     private CartItemRepository cartItemRepository;
 
+    @Mock
+    private ItemCacheService itemCacheService;
+
+    @Mock
+    private PaymentAdapter paymentAdapter;
+
     @InjectMocks
     private ItemServiceImpl itemService;
 
@@ -53,7 +66,7 @@ class ItemServiceImplTest {
         void test1() {
             var itemSize = 5;
             var pageNumber = 1;
-            var pageSize = 5;
+            var pageSize = 4;
             var rowSize = 3;
             var sortMethod = NO;
             String search = null;
@@ -61,15 +74,17 @@ class ItemServiceImplTest {
             var items = TestDataFactory.createItems(itemSize);
             var firstItem = items.getFirst();
 
-            when(itemRepository.findAllBy(any(Pageable.class))).thenReturn(Flux.fromIterable(items));
-            when(itemRepository.count()).thenReturn(Mono.just(10L));
+            var itemsCacheList = ItemMapper.toItemsCacheDto(items).subList(0, pageSize);
+            var itemsPageCache = new ItemsPageCacheDto(itemsCacheList, itemSize);
+
+            when(itemCacheService.getItemsPage(any(), any())).thenReturn(Mono.just(itemsPageCache));
             when(cartItemRepository.findByItemIdIn(anyList()))
                     .thenReturn(Flux.just(TestDataFactory.createCartItem(firstItem.getId(), 2)));
 
             var response = itemService.getItems(search, sortMethod, pageNumber, pageSize).block();
             assertThat(response.items())
                     .isNotEmpty()
-                    .hasSize(Math.ceilDiv(itemSize, rowSize));
+                    .hasSize(Math.ceilDiv(pageSize, rowSize));
             assertThat(response.items().getFirst()).hasSize(rowSize);
 
             assertThat(response.search()).isNull();
@@ -85,7 +100,7 @@ class ItemServiceImplTest {
 
             var responsePaging = response.paging();
             assertThat(responsePaging.pageNumber()).isEqualTo(pageNumber);
-            assertThat(responsePaging.pageSize()).isEqualTo(itemSize);
+            assertThat(responsePaging.pageSize()).isEqualTo(pageSize);
             assertThat(responsePaging.hasNext()).isTrue();
             assertThat(responsePaging.hasPrevious()).isFalse();
         }
@@ -102,11 +117,10 @@ class ItemServiceImplTest {
             var items = TestDataFactory.createItems(itemSize);
             var firstItem = items.getFirst();
 
-            when(itemRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-                    any(), any(), any(Pageable.class)))
-                    .thenReturn(Flux.fromIterable(items));
-            when(itemRepository.countByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any()))
-                    .thenReturn(Mono.just((long) itemSize));
+            var itemsCacheList = ItemMapper.toItemsCacheDto(items);
+            var itemsPageCache = new ItemsPageCacheDto(itemsCacheList, itemSize);
+
+            when(itemCacheService.getItemsPage(eq(search), any())).thenReturn(Mono.just(itemsPageCache));
             when(cartItemRepository.findByItemIdIn(anyList())).thenReturn(Flux.empty());
 
             var response = itemService.getItems(search, sortMethod, pageNumber, pageSize).block();
@@ -134,12 +148,13 @@ class ItemServiceImplTest {
         @DisplayName("ok")
         void test1() {
             var item = TestDataFactory.createItem(1L);
+            var itemCache = ItemMapper.toItemCacheDto(item);
             var quantity = 4;
             var cartItem = new CartItem();
             cartItem.setItemId(item.getId());
             cartItem.setQuantity(quantity);
 
-            when(itemRepository.findById(item.getId())).thenReturn(Mono.just(item));
+            when(itemCacheService.findItem(item.getId())).thenReturn(Mono.just(itemCache));
             when(cartItemRepository.findByItemId(item.getId())).thenReturn(Mono.just(cartItem));
 
             var response = itemService.getItem(item.getId()).block();
@@ -154,7 +169,9 @@ class ItemServiceImplTest {
         @Test
         @DisplayName("not found")
         void test2() {
-            when(itemRepository.findById(1L)).thenReturn(Mono.empty());
+            when(itemCacheService.findItem(1L)).thenReturn(
+                    Mono.error(new ItemNotFoundException(1L, "Item with id = 1 not found."))
+            );
 
             assertThatExceptionOfType(ItemNotFoundException.class)
                     .isThrownBy(() -> itemService.getItem(1L).block());
@@ -173,10 +190,12 @@ class ItemServiceImplTest {
                     TestDataFactory.createCartItem(items.get(0).getId(), 2),
                     TestDataFactory.createCartItem(items.get(1).getId(), 3)
             );
+            var cartCacheDto = new CartCacheDto(items.stream().map(ItemMapper::toItemCacheDto).toList());
 
             when(cartItemRepository.findAll()).thenReturn(Flux.fromIterable(cartItems));
-            when(itemRepository.findByIdIn(List.of(items.get(0).getId(), items.get(1).getId())))
-                    .thenReturn(Flux.fromIterable(items));
+            when(itemCacheService.getItemsByIds(List.of(items.get(0).getId(), items.get(1).getId())))
+                    .thenReturn(Mono.just(cartCacheDto));
+            when(paymentAdapter.getBalance()).thenReturn(Mono.just(new Balance(BigDecimal.valueOf(10000))));
 
             var cart = itemService.getCart().block();
             assertThat(cart.items()).hasSize(2);
