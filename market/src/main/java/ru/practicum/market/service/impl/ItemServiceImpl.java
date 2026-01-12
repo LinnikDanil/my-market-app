@@ -1,0 +1,235 @@
+package ru.practicum.market.service.impl;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+import reactor.util.retry.RetrySpec;
+import ru.practicum.market.domain.exception.CartItemNotFoundException;
+import ru.practicum.market.domain.exception.ItemNotFoundException;
+import ru.practicum.market.domain.model.CartItem;
+import ru.practicum.market.integration.PaymentAdapter;
+import ru.practicum.market.repository.CartItemRepository;
+import ru.practicum.market.repository.ItemRepository;
+import ru.practicum.market.service.ItemService;
+import ru.practicum.market.service.cache.ItemCacheService;
+import ru.practicum.market.service.cache.dto.ItemCacheDto;
+import ru.practicum.market.web.dto.CartResponseDto;
+import ru.practicum.market.web.dto.ItemResponseDto;
+import ru.practicum.market.web.dto.ItemsResponseDto;
+import ru.practicum.market.web.dto.Paging;
+import ru.practicum.market.web.dto.enums.CartAction;
+import ru.practicum.market.web.dto.enums.SortMethod;
+import ru.practicum.market.web.mapper.ItemMapper;
+
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.Map;
+
+import static ru.practicum.market.web.dto.enums.SortMethod.ALPHA;
+import static ru.practicum.market.web.dto.enums.SortMethod.PRICE;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ItemServiceImpl implements ItemService {
+
+    private static final int ITEMS_IN_ROW = 3;
+
+    private final ItemCacheService itemCacheService;
+    private final ItemRepository itemRepository;
+    private final CartItemRepository cartItemRepository;
+    private final PaymentAdapter paymentAdapter;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Mono<ItemsResponseDto> getItems(String search, SortMethod sortMethod, int pageNumber, int pageSize) {
+
+        log.debug("Request to fetch items with search='{}', sortMethod={}, pageNumber={}, pageSize={}",
+                search, sortMethod, pageNumber, pageSize);
+
+        var sort = switch (sortMethod) {
+            case NO -> Sort.unsorted();
+            case ALPHA -> Sort.by(ALPHA.getColumnName());
+            case PRICE -> Sort.by(PRICE.getColumnName());
+        };
+        var pageable = PageRequest.of(pageNumber - 1, pageSize, sort);
+
+        return itemCacheService.getItemsPage(search, pageable)
+                .flatMap(itemsPage -> {
+                    var items = itemsPage.items();
+                    var itemsCount = itemsPage.itemsCount();
+
+                    Mono<Map<Long, Integer>> quantityForItemMono = items.isEmpty()
+                            ? Mono.just(Map.of())
+                            : cartItemRepository.findByItemIdIn(items.stream().map(ItemCacheDto::id).toList())
+                            .collectMap(CartItem::getItemId, CartItem::getQuantity);
+
+                    return quantityForItemMono.map(quantityForItem -> {
+                        log.debug("Fetched {} items, {} related cart items", items.size(), quantityForItem.size());
+                        var itemRows = ItemMapper.toItemRows(items, quantityForItem, ITEMS_IN_ROW);
+
+                        log.debug("Items response prepared with {} rows", itemRows.size());
+
+                        var paging = convertToPaging(items.size(), itemsCount, pageable);
+
+                        return new ItemsResponseDto(itemRows, search, sortMethod, paging);
+                    });
+                });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Mono<ItemResponseDto> getItem(long id) {
+        log.debug("Request to fetch item with id={}", id);
+
+        return itemCacheService.findItem(id)
+                .flatMap(item ->
+                        cartItemRepository.findByItemId(id)
+                                .map(CartItem::getQuantity)
+                                .defaultIfEmpty(0)
+                                .map(itemQuantity -> ItemMapper.toItemResponseDto(item, itemQuantity))
+                                .doOnSuccess(r -> log.debug("Item {} has quantity {} in cart", id, r.count()))
+                );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Mono<CartResponseDto> getCart() {
+        log.debug("Request to fetch cart");
+
+        return cartItemRepository.findAll().collectList()
+                .flatMap(cartItems -> {
+                    log.debug("Cart contains {} items", cartItems.size());
+
+                    if (cartItems.isEmpty()) {
+                        return Mono.just(new CartResponseDto(Collections.emptyList(), 0, false));
+                    }
+
+                    var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
+
+
+                    var cartCacheMono = itemCacheService.getItemsByIds(itemIds);
+                    var currentBalanceMono = paymentAdapter.getBalance();
+
+                    return Mono.zip(cartCacheMono, currentBalanceMono)
+                            .map(t -> {
+                                var cartCache = t.getT1();
+                                var currentBalance = t.getT2().balance();
+                                return ItemMapper.toCart(cartItems, cartCache.items(), currentBalance);
+                            });
+                });
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public Mono<CartResponseDto> getCartWithoutPayments() {
+        log.debug("Request to fetch cart");
+
+        return cartItemRepository.findAll().collectList()
+                .flatMap(cartItems -> {
+                    log.debug("Cart contains {} items", cartItems.size());
+
+                    if (cartItems.isEmpty()) {
+                        return Mono.just(new CartResponseDto(Collections.emptyList(), 0, false));
+                    }
+
+                    var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
+                    return itemCacheService.getItemsByIds(itemIds)
+                            .map(cartCache -> ItemMapper.toCart(cartItems, cartCache.items(), BigDecimal.ZERO));
+                });
+    }
+
+    @Override
+    @Transactional
+    public Mono<Void> updateItemsCountInCart(long itemId, CartAction action) {
+        log.debug("Updating cart for itemId={} with action={}", itemId, action);
+        return switch (action) {
+            case PLUS -> incrementItemQuantityInCart(itemId);
+            case MINUS -> decrementItemQuantityInCart(itemId);
+            case DELETE -> deleteItemFromCart(itemId);
+        };
+    }
+
+    private Mono<Void> incrementItemQuantityInCart(long itemId) {
+        log.debug("Increment item {} in cart", itemId);
+        return itemRepository.findById(itemId)
+                .switchIfEmpty(Mono.error(new ItemNotFoundException(itemId,
+                        "Item with id = %d not found".formatted(itemId)))
+                )
+                .flatMap(exists -> cartItemRepository.findByItemId(itemId)
+                        .defaultIfEmpty(new CartItem(itemId))
+                        .flatMap(ci -> {
+                            ci.setQuantity(ci.getQuantity() + 1);
+                            return cartItemRepository.save(ci);
+                        })
+                        .retryWhen(getRetrySpec(itemId))
+                        .doOnSuccess(ci -> log.debug("Item {} quantity increased to {}",
+                                itemId, ci.getQuantity()))
+                        .then()
+                );
+    }
+
+    private Mono<Void> decrementItemQuantityInCart(long itemId) {
+        log.debug("Decrement item {} in cart", itemId);
+        return cartItemRepository.findByItemId(itemId)
+                .switchIfEmpty(
+                        Mono.error(new CartItemNotFoundException(itemId, "Cart item with id = %d not found."
+                                .formatted(itemId)))
+                )
+                .flatMap(ci -> {
+                    var itemQuantity = ci.getQuantity();
+                    log.debug("Current quantity for item {} is {}", itemId, itemQuantity);
+
+                    if (itemQuantity == 1) {
+                        return cartItemRepository.delete(ci)
+                                .doOnSuccess(v -> log.debug("Item {} has been removed from cart", itemId));
+                    }
+
+                    ci.setQuantity(ci.getQuantity() - 1);
+                    return cartItemRepository.save(ci)
+                            .doOnSuccess(saved -> log.debug("Item {} new quantity is {}",
+                                    itemId, ci.getQuantity())
+                            )
+                            .then();
+
+                })
+                .retryWhen(getRetrySpec(itemId));
+
+
+    }
+
+    private Mono<Void> deleteItemFromCart(long itemId) {
+        log.debug("Deleting item {} from cart", itemId);
+        return cartItemRepository.findByItemId(itemId)
+                .switchIfEmpty(Mono.error(
+                        new CartItemNotFoundException(itemId, "Cart item with id = %d not found.".formatted(itemId)))
+                ).flatMap(ci ->
+                        cartItemRepository.delete(ci)
+                                .doOnSuccess(v -> log.debug("Item {} has been deleted from cart", itemId))
+                );
+    }
+
+    private RetrySpec getRetrySpec(long itemId) {
+        return Retry
+                .max(3)
+                .filter(ex -> ex instanceof OptimisticLockingFailureException)
+                .doBeforeRetry(retrySignal ->
+                        log.warn("Optimistic lock conflict for itemId = {}, retry #{}",
+                                itemId, retrySignal.totalRetries() + 1));
+    }
+
+    private Paging convertToPaging(long itemsSize, long itemsCount, Pageable pageable) {
+        var pageNumber = pageable.getPageNumber() + 1;
+        var hasPreviousPage = pageNumber > 1;
+        var hasNextPage = pageable.getOffset() + itemsSize < itemsCount;
+
+        return new Paging(pageable.getPageSize(), pageNumber, hasPreviousPage, hasNextPage);
+    }
+}

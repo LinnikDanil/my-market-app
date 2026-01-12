@@ -1,0 +1,215 @@
+openapi: 3.0.3
+info:
+  title: Payments Service API
+  description: API осуществления платежей для витрины товаров.
+  version: 1.0.0
+
+paths:
+  /api/payments/balance:
+    get:
+      operationId: getBalance
+      summary: Получение баланса на счёте
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+        '500':
+          description: Внутренняя ошибка сервиса платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис платежей недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: replenishBalance
+      summary: Пополнить баланс
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+      responses:
+        '200':
+          description: Успешный ответ
+        '500':
+          description: Внутренняя ошибка сервиса платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис платежей недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/hold:
+    post:
+      operationId: holdPayment
+      summary: Заморозить сумму для списания
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HoldRq'
+      responses:
+        '200':
+          description: Сумма заморожена, возвращён paymentId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HoldRs"
+        '409':
+          description: Недостаточно средств на балансе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервиса платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис платежей недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/confirm/{paymentId}:
+    post:
+      operationId: confirmPayment
+      summary: Списать сумму платежа с баланса
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Платёж подтверждён
+        '404':
+          description: PaymentId не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервиса платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис платежей недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/cancel/{paymentId}:
+    post:
+      operationId: cancelPayment
+      summary: Отмена платежа
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Hold отменён
+        '404':
+          description: PaymentId не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервиса платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис платежей недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Payment:
+      type: object
+      required: [ amount ]
+      properties:
+        amount:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+          example: 599.09
+
+    HoldRq:
+      type: object
+      required: [ amount ]
+      properties:
+        amount:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+          example: 599.09
+
+    HoldRs:
+      type: object
+      required: [ paymentId ]
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+          example: 77773761-62d4-46ab-b029-72cc58622bcc
+
+    Balance:
+      type: object
+      required: [ balance ]
+      properties:
+        balance:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+          example: 101.01
+
+    ErrorResponse:
+      type: object
+      required: [ code, message ]
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки
+          example: INSUFFICIENT_FUNDS
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
+          example: Недостаточно средств на балансе
+        timestamp:
+          type: string
+          format: date-time
+          description: Время возникновения ошибки
+          example: "2026-01-09T12:34:56Z"
