@@ -1,0 +1,48 @@
+server:
+  port: ${SERVER_PORT}
+
+spring:
+  application:
+    name: market
+
+  r2dbc:
+    url: ${SPRING_R2DBC_URL}
+    username: ${SPRING_R2DBC_USERNAME}
+    password: ${SPRING_R2DBC_PASSWORD}
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.xml
+    default-schema: ${DATASOURCE_SCHEMA_NAME}
+    url: ${SPRING_LIQUIBASE_URL}
+    user: ${SPRING_LIQUIBASE_USER}
+    password: ${SPRING_LIQUIBASE_PASSWORD}
+
+  webflux:
+    multipart:
+      max-in-memory-size: ${SPRING_WEBFLUX_MULTIPART_MAX_IN_MEMORY_SIZE}
+      max-disk-usage-per-part: ${SPRING_WEBFLUX_MULTIPART_MAX_DISK_USAGE_PER_PART}
+      max-parts: ${SPRING_WEBFLUX_MULTIPART_MAX_PARTS}
+
+  http:
+    codecs:
+      max-in-memory-size: ${SPRING_CODEC_MAX_IN_MEMORY_SIZE}
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+  cache:
+    redis:
+      time-to-live: ${REDIS_TTL}
+
+logging:
+  level:
+    ru:
+      practicum: ${LOGGING_PRACTICUM_LEVEL}
+
+image:
+  path: ${IMAGE_PATH}
+
+integration:
+  payments:
+    baseUrl: ${PAYMENTS_BASE_URL}
