@@ -12,6 +12,9 @@ import java.net.InetSocketAddress;
 @Slf4j
 public class RouteLoggingFilter {
 
+    /**
+     * Возвращает фильтр логирования входящих HTTP-запросов.
+     */
     public HandlerFilterFunction<ServerResponse, ServerResponse> logging() {
         return (request, next) -> {
             var query = request.uri().getQuery();

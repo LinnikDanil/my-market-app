@@ -17,6 +17,9 @@ import java.util.Map;
 @Configuration
 public class CacheConfig {
 
+    /**
+     * Настраивает сериализацию и TTL для кэшей item/items-page/cart.
+     */
     @Bean
     public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer(
             @Value("${spring.cache.redis.time-to-live}") Duration ttl) {

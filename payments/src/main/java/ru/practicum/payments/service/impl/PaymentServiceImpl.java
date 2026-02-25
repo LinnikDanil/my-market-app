@@ -53,12 +53,18 @@ public class PaymentServiceImpl implements PaymentService {
     private final AtomicReference<BigDecimal> balance;
     private final ConcurrentHashMap<UUID, BigDecimal> holds;
 
+    /**
+     * Инициализирует сервис стартовым балансом и пустым набором hold-операций.
+     */
     public PaymentServiceImpl() {
         log.info("Стартовый баланс установлен в 5000 рублей.");
         balance = new AtomicReference<>(BigDecimal.valueOf(5000));
         holds = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Возвращает текущий баланс.
+     */
     @Override
     public Mono<BigDecimal> getBalance() {
         var currentBalance = balance.get();
@@ -66,6 +72,9 @@ public class PaymentServiceImpl implements PaymentService {
         return Mono.just(currentBalance);
     }
 
+    /**
+     * Пополняет баланс на сумму из запроса.
+     */
     @Override
     public Mono<Void> replenishBalance(Mono<Payment> paymentMono) {
         return paymentMono
@@ -78,6 +87,9 @@ public class PaymentServiceImpl implements PaymentService {
                 .then();
     }
 
+    /**
+     * Резервирует сумму на оплату, уменьшая доступный баланс.
+     */
     @Override
     public Mono<HoldRs> holdPayment(Mono<HoldRq> paymentMono) {
         return paymentMono.flatMap(rq ->
@@ -104,6 +116,9 @@ public class PaymentServiceImpl implements PaymentService {
         );
     }
 
+    /**
+     * Подтверждает hold-операцию.
+     */
     @Override
     public Mono<Void> confirmPayment(UUID paymentId) {
         log.debug("Confirm payment id = {}.", paymentId);
@@ -118,6 +133,9 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
+    /**
+     * Отменяет hold-операцию и возвращает сумму в баланс.
+     */
     @Override
     public Mono<Void> cancelPayment(UUID paymentId) {
         log.debug("Cancel payment id = {}.", paymentId);
@@ -133,6 +151,9 @@ public class PaymentServiceImpl implements PaymentService {
         });
     }
 
+    /**
+     * Логирует и бросает исключение, если hold-операция не найдена.
+     */
     private void throwAndLog(UUID paymentId) {
         log.error("Hold with id = {} was not found.", paymentId);
         throw new PaymentNotFoundException(

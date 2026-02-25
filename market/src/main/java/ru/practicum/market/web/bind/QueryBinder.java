@@ -20,6 +20,9 @@ public class QueryBinder {
     private static final int MIN_PAGE_NUMBER = 1;
     private static final int MIN_PAGE_SIZE = 5;
 
+    /**
+     * Собирает параметры списка товаров из query-параметров запроса.
+     */
     public ItemsQuery bindItemsQuery(ServerRequest request) {
         String search = request.queryParam(PARAM_SEARCH)
                 .orElse(null);
@@ -36,17 +39,26 @@ public class QueryBinder {
         return new ItemsQuery(search, sortMethod, pageNumber, pageSize);
     }
 
+    /**
+     * Извлекает и валидирует id из path-переменной.
+     */
     public long bindPathVariableId(ServerRequest request) {
         var id = request.pathVariable(PATH_VARIABLE_ID);
         return parseId(id);
     }
 
+    /**
+     * Извлекает и валидирует id из query-параметра.
+     */
     public long bindParamId(ServerRequest request) {
         return request.queryParam(PARAM_ID)
                 .map(this::parseId)
                 .orElseThrow(() -> new MarketBadRequestException("Missing query param: " + PARAM_ID));
     }
 
+    /**
+     * Извлекает действие корзины из query-параметра.
+     */
     public CartAction bindParamAction(ServerRequest request) {
         return request.queryParam(PARAM_ACTION)
                 .map(ca -> {
@@ -59,6 +71,9 @@ public class QueryBinder {
                 .orElseThrow(() -> new MarketBadRequestException("Missing query param: " + PARAM_ACTION));
     }
 
+    /**
+     * Извлекает флаг "новый заказ" из query-параметра.
+     */
     public boolean bindParamNewOrder(ServerRequest request) {
         return request.queryParam(PARAM_NEW_ORDER)
                 .map(newOrder -> {
@@ -71,6 +86,9 @@ public class QueryBinder {
                 .orElse(false);
     }
 
+    /**
+     * Парсит положительное целое значение.
+     */
     private int parsePositiveInt(String pg, String field) {
         int value;
         try {
@@ -84,6 +102,9 @@ public class QueryBinder {
         return value;
     }
 
+    /**
+     * Парсит значение сортировки.
+     */
     private SortMethod parseSort(String sort) {
         try {
             return SortMethod.valueOf(sort);
@@ -92,6 +113,9 @@ public class QueryBinder {
         }
     }
 
+    /**
+     * Парсит id в long.
+     */
     private long parseId(String id) {
         try {
             return Long.parseLong(id);

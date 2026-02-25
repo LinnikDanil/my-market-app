@@ -16,6 +16,9 @@ import ru.practicum.payments.exception.PaymentBalanceException;
 @Slf4j
 public class DefaultExceptionHandler {
 
+    /**
+     * Обрабатывает все непредвиденные исключения как HTTP 500.
+     */
     @ExceptionHandler
     public Mono<ResponseEntity<ErrorResponse>> exception(Exception e) {
         log.error("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
@@ -26,6 +29,9 @@ public class DefaultExceptionHandler {
         );
     }
 
+    /**
+     * Обрабатывает ошибки валидации и формата входных данных как HTTP 400.
+     */
     @ExceptionHandler({ServerWebInputException.class, ValidationException.class, WebExchangeBindException.class})
     public Mono<ResponseEntity<ErrorResponse>> badRequestException(Exception e) {
         log.warn("Handled bad request exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage());
@@ -36,6 +42,9 @@ public class DefaultExceptionHandler {
         );
     }
 
+    /**
+     * Обрабатывает нехватку средств как HTTP 409.
+     */
     @ExceptionHandler(PaymentBalanceException.class)
     public Mono<ResponseEntity<ErrorResponse>> conflictException(PaymentBalanceException e) {
         log.warn("Handled conflict exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage());

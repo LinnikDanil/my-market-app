@@ -17,6 +17,9 @@ import ru.practicum.market.web.filter.RouteLoggingFilter;
 @Configuration
 public class RouterConfiguration {
 
+    /**
+     * Объединяет все маршруты приложения и подключает общие фильтры.
+     */
     @Bean
     public RouterFunction<ServerResponse> routes(
             RouterFunction<ServerResponse> itemRoutes,
@@ -34,6 +37,9 @@ public class RouterConfiguration {
                 .filter(routeExceptionFilter.errors());
     }
 
+    /**
+     * Регистрирует маршруты каталога товаров.
+     */
     @Bean
     public RouterFunction<ServerResponse> itemRoutes(ItemHandler itemHandler) {
         return RouterFunctions.route()
@@ -47,6 +53,9 @@ public class RouterConfiguration {
                 .build();
     }
 
+    /**
+     * Регистрирует маршруты корзины.
+     */
     @Bean
     public RouterFunction<ServerResponse> cartRoutes(CartHandler cartHandler) {
         return RouterFunctions.route()
@@ -57,6 +66,9 @@ public class RouterConfiguration {
                 .build();
     }
 
+    /**
+     * Регистрирует маршруты заказов.
+     */
     @Bean
     public RouterFunction<ServerResponse> orderRoutes(OrderHandler orderHandler) {
         return RouterFunctions.route()
@@ -68,6 +80,9 @@ public class RouterConfiguration {
                 .build();
     }
 
+    /**
+     * Регистрирует административные маршруты.
+     */
     @Bean
     public RouterFunction<ServerResponse> adminRoutes(AdminHandler adminHandler) {
         return RouterFunctions.route()

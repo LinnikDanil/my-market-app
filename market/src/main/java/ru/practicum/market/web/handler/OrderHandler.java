@@ -20,6 +20,9 @@ public class OrderHandler {
     private final OrderService orderService;
     private final QueryBinder binder;
 
+    /**
+     * Отображает страницу списка заказов.
+     */
     public Mono<ServerResponse> getOrders(ServerRequest request) {
 
         var ordersDriver = new ReactiveDataDriverContextVariable(
@@ -32,6 +35,9 @@ public class OrderHandler {
                 .render("orders", Map.of("orders", ordersDriver));
     }
 
+    /**
+     * Отображает страницу конкретного заказа.
+     */
     public Mono<ServerResponse> getOrder(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
         boolean newOrder = binder.bindParamNewOrder(request);
@@ -47,6 +53,9 @@ public class OrderHandler {
                 );
     }
 
+    /**
+     * Создает заказ из корзины и перенаправляет на страницу созданного заказа.
+     */
     public Mono<ServerResponse> createOrder(ServerRequest request) {
         return orderService.createOrder()
                 .flatMap(id ->

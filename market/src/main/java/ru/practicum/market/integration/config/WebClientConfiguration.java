@@ -22,23 +22,35 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class WebClientConfiguration {
 
+    /**
+     * Создает WebClient для интеграции с сервисом платежей.
+     */
     @Bean
-    public WebClient paymentsWebClient(@Value("${integration.payments.baseUrl}") String baseUrl) {
-        ConnectionProvider provider = ConnectionProvider.builder("payments-pool")
-                .maxConnections(50)
-                .pendingAcquireTimeout(Duration.ofSeconds(2))
-                .maxIdleTime(Duration.ofSeconds(30))
+    public WebClient paymentsWebClient(
+            @Value("${integration.payments.baseUrl}") String baseUrl,
+            @Value("${integration.payments.web-client.pool.name}") String poolName,
+            @Value("${integration.payments.web-client.pool.max-connections}") int maxConnections,
+            @Value("${integration.payments.web-client.pool.pending-acquire-timeout}") Duration pendingAcquireTimeout,
+            @Value("${integration.payments.web-client.pool.max-idle-time}") Duration maxIdleTime,
+            @Value("${integration.payments.web-client.timeouts.connect-timeout-millis}") int connectTimeoutMillis,
+            @Value("${integration.payments.web-client.timeouts.response-timeout}") Duration responseTimeout,
+            @Value("${integration.payments.web-client.timeouts.read-timeout}") Duration readTimeout,
+            @Value("${integration.payments.web-client.timeouts.write-timeout}") Duration writeTimeout) {
+        ConnectionProvider provider = ConnectionProvider.builder(poolName)
+                .maxConnections(maxConnections)
+                .pendingAcquireTimeout(pendingAcquireTimeout)
+                .maxIdleTime(maxIdleTime)
                 .build();
 
         HttpClient httpClient = HttpClient.create(provider)
                 // Таймаут установки TCP-соединения
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutMillis)
                 // Таймаут получения ответа целиком
-                .responseTimeout(Duration.ofSeconds(3))
+                .responseTimeout(responseTimeout)
                 // Таймауты чтения/записи на уровне канала
                 .doOnConnected(conn -> conn
-                        .addHandlerLast(new ReadTimeoutHandler(3, TimeUnit.SECONDS))
-                        .addHandlerLast(new WriteTimeoutHandler(3, TimeUnit.SECONDS)));
+                        .addHandlerLast(new ReadTimeoutHandler(readTimeout.toMillis(), TimeUnit.MILLISECONDS))
+                        .addHandlerLast(new WriteTimeoutHandler(writeTimeout.toMillis(), TimeUnit.MILLISECONDS)));
 
         return WebClient.builder()
                 .baseUrl(baseUrl)
@@ -50,6 +62,9 @@ public class WebClientConfiguration {
                 .build();
     }
 
+    /**
+     * Фильтр логирования исходящих запросов в платежный сервис.
+     */
     private ExchangeFilterFunction logRequest() {
         return (request, next) -> {
             log.debug("Payments Request: {} {}", request.method(), request.url());
@@ -57,6 +72,9 @@ public class WebClientConfiguration {
         };
     }
 
+    /**
+     * Фильтр логирования ответов платежного сервиса.
+     */
     private ExchangeFilterFunction logResponse() {
         return (request, next) -> next.exchange(request)
                 .doOnNext(resp -> log.debug("Payments Response: {}", resp.statusCode()));

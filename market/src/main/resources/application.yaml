@@ -42,7 +42,20 @@ logging:
 
 image:
   path: ${IMAGE_PATH}
+  public-uri-prefix: ${IMAGE_PUBLIC_URI_PREFIX}
+  resource-handler-pattern: ${IMAGE_RESOURCE_HANDLER_PATTERN}
 
 integration:
   payments:
     baseUrl: ${PAYMENTS_BASE_URL}
+    web-client:
+      pool:
+        name: ${PAYMENTS_WEBCLIENT_POOL_NAME}
+        max-connections: ${PAYMENTS_WEBCLIENT_POOL_MAX_CONNECTIONS}
+        pending-acquire-timeout: ${PAYMENTS_WEBCLIENT_POOL_PENDING_ACQUIRE_TIMEOUT}
+        max-idle-time: ${PAYMENTS_WEBCLIENT_POOL_MAX_IDLE_TIME}
+      timeouts:
+        connect-timeout-millis: ${PAYMENTS_WEBCLIENT_CONNECT_TIMEOUT_MILLIS}
+        response-timeout: ${PAYMENTS_WEBCLIENT_RESPONSE_TIMEOUT}
+        read-timeout: ${PAYMENTS_WEBCLIENT_READ_TIMEOUT}
+        write-timeout: ${PAYMENTS_WEBCLIENT_WRITE_TIMEOUT}

@@ -10,10 +10,15 @@ public class WebConfig implements WebFluxConfigurer {
 
     @Value("${image.path}")
     private String imagePath;
+    @Value("${image.resource-handler-pattern}")
+    private String imageResourceHandlerPattern;
 
+    /**
+     * Регистрирует обработчик статических изображений, загруженных администратором.
+     */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/images/**")
+        registry.addResourceHandler(imageResourceHandlerPattern)
                 .addResourceLocations("file:" + imagePath + "/");
     }
 

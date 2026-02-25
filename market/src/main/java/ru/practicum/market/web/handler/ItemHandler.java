@@ -21,6 +21,9 @@ public class ItemHandler {
     private final ItemService itemService;
     private final QueryBinder binder;
 
+    /**
+     * Отображает страницу каталога товаров.
+     */
     public Mono<ServerResponse> getItems(ServerRequest request) {
         var itemsQuery = binder.bindItemsQuery(request);
         return itemService.getItems(
@@ -36,11 +39,17 @@ public class ItemHandler {
                 );
     }
 
+    /**
+     * Отображает страницу конкретного товара.
+     */
     public Mono<ServerResponse> getItem(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
         return getItemById(id);
     }
 
+    /**
+     * Обновляет количество товара в корзине из списка товаров и делает redirect обратно в каталог.
+     */
     public Mono<ServerResponse> updateItemsCountInCartForItems(ServerRequest request) {
         var id = binder.bindParamId(request);
         var action = binder.bindParamAction(request);
@@ -57,6 +66,9 @@ public class ItemHandler {
                 .then(ServerResponse.seeOther(redirectUri).build());
     }
 
+    /**
+     * Обновляет количество товара в корзине со страницы карточки товара.
+     */
     public Mono<ServerResponse> updateItemsCountInCartForItem(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
         var action = binder.bindParamAction(request);
@@ -65,6 +77,9 @@ public class ItemHandler {
                 .then(getItemById(id));
     }
 
+    /**
+     * Рендерит карточку товара по id.
+     */
     private Mono<ServerResponse> getItemById(long id) {
         return itemService.getItem(id)
                 .flatMap(item ->
@@ -73,6 +88,9 @@ public class ItemHandler {
                                 .render("item", Map.of("item", item)));
     }
 
+    /**
+     * Собирает модель для шаблона страницы каталога.
+     */
     private Map<String, Object> buildItemsModel(ItemsResponseDto itemsResponseDto) {
         var model = new HashMap<String, Object>();
         model.put("items", itemsResponseDto.items());

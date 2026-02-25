@@ -31,6 +31,9 @@ public class RouteExceptionFilter {
 
     private final ItemService itemService;
 
+    /**
+     * Возвращает общий фильтр обработки исключений для functional routes.
+     */
     public HandlerFilterFunction<ServerResponse, ServerResponse> errors() {
         return (request, next) ->
                 next.handle(request)
@@ -54,11 +57,17 @@ public class RouteExceptionFilter {
                         .onErrorResume(Exception.class, e -> oops(e, request));
     }
 
+    /**
+     * Обрабатывает ошибку "payment id not found".
+     */
     private Mono<ServerResponse> paymentNofFound(RuntimeException e, ServerRequest request) {
         logException(e);
         return ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).render("payment-not-found");
     }
 
+    /**
+     * Обрабатывает нехватку средств и возвращает корзину с неактивной оплатой.
+     */
     private Mono<ServerResponse> insufficientFunds(PaymentBalanceException e, ServerRequest request) {
         logException(e);
 
@@ -72,6 +81,9 @@ public class RouteExceptionFilter {
                         )));
     }
 
+    /**
+     * Обрабатывает недоступность платежного сервиса.
+     */
     private Mono<ServerResponse> paymentServiceUnavailable(RuntimeException e, ServerRequest request) {
         logException(e);
 
@@ -86,32 +98,50 @@ public class RouteExceptionFilter {
                         )));
     }
 
+    /**
+     * Обрабатывает непредвиденные ошибки.
+     */
     private Mono<ServerResponse> oops(Exception e, ServerRequest request) {
         log.error("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
         return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).render("oops");
     }
 
+    /**
+     * Возвращает страницу ошибки 400.
+     */
     private Mono<ServerResponse> badRequest(Exception e, ServerRequest request) {
         logException(e);
         return ServerResponse.status(HttpStatus.BAD_REQUEST).render("bad-request");
     }
 
+    /**
+     * Возвращает страницу ошибки 400 для admin-сценариев.
+     */
     private Mono<ServerResponse> adminBadRequest(Exception e, ServerRequest request) {
         logException(e);
         return ServerResponse.status(HttpStatus.BAD_REQUEST).render("admin-error");
     }
 
+    /**
+     * Возвращает страницу ошибки 404.
+     */
     private Mono<ServerResponse> notFound(NotFoundExceptionAbstract e, ServerRequest request) {
         logException(e);
         return ServerResponse.status(HttpStatus.NOT_FOUND)
                 .render("not-found", Map.of("id", String.valueOf(e.getId())));
     }
 
+    /**
+     * Возвращает страницу ошибки 409.
+     */
     private Mono<ServerResponse> conflict(Exception e, ServerRequest request) {
         logException(e);
         return ServerResponse.status(HttpStatus.CONFLICT).render("conflict");
     }
 
+    /**
+     * Логирует обработанное исключение единообразно.
+     */
     private void logException(Exception e) {
         log.warn("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage());
     }

@@ -18,6 +18,9 @@ public class CartHandler {
     private final ItemService itemService;
     private final QueryBinder binder;
 
+    /**
+     * Отображает страницу корзины.
+     */
     public Mono<ServerResponse> getCart(ServerRequest request) {
         return itemService.getCart()
                 .flatMap(cart ->
@@ -31,6 +34,9 @@ public class CartHandler {
                 );
     }
 
+    /**
+     * Обновляет количество товара в корзине и возвращает актуальную страницу корзины.
+     */
     public Mono<ServerResponse> updateItemsCountInCart(ServerRequest request) {
         var id = binder.bindParamId(request);
         var action = binder.bindParamAction(request);

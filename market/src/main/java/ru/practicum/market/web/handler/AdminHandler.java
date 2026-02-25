@@ -4,11 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.thymeleaf.spring6.context.webflux.ReactiveDataDriverContextVariable;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.service.AdminService;
@@ -24,7 +22,9 @@ public class AdminHandler {
     private final AdminService adminService;
     private final QueryBinder binder;
 
-    @GetMapping
+    /**
+     * Отображает админ-страницу со списком товаров.
+     */
     public Mono<ServerResponse> getAdminPage(ServerRequest request) {
         return adminService.getAllItems()
                 .collectList()
@@ -33,6 +33,9 @@ public class AdminHandler {
                         .render("admin", Map.of("items", items)));
     }
 
+    /**
+     * Принимает Excel-файл товаров и перенаправляет на страницу admin с сообщением.
+     */
     public Mono<ServerResponse> uploadItems(ServerRequest request) {
         return request.multipartData()
                 .flatMap(parts -> {
@@ -48,6 +51,9 @@ public class AdminHandler {
                 .onErrorResume(ex -> redirectWithParam("error", ex.getMessage()));
     }
 
+    /**
+     * Загружает изображение для товара и перенаправляет на страницу admin с сообщением.
+     */
     public Mono<ServerResponse> uploadImage(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
 
@@ -65,6 +71,9 @@ public class AdminHandler {
                 .onErrorResume(ex -> redirectWithParam("error", ex.getMessage()));
     }
 
+    /**
+     * Выполняет redirect на `/admin` с query-параметром результата.
+     */
     private Mono<ServerResponse> redirectWithParam(String key, String value) {
         var uri = UriComponentsBuilder.fromPath("/admin")
                 .queryParam(key, value)

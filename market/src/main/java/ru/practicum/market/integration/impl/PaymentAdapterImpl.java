@@ -28,6 +28,9 @@ import static ru.practicum.market.integration.util.PaymentUris.PAYMENT_HOLD;
 public class PaymentAdapterImpl implements PaymentAdapter {
     private final WebClient webClient;
 
+    /**
+     * Запрашивает баланс из платежного сервиса.
+     */
     @Override
     public Mono<Balance> getBalance() {
         return webClient.get()
@@ -48,6 +51,9 @@ public class PaymentAdapterImpl implements PaymentAdapter {
                 .bodyToMono(Balance.class);
     }
 
+    /**
+     * Запрашивает hold-операцию в платежном сервисе.
+     */
     @Override
     public Mono<HoldRs> hold(HoldRq holdRq) {
         return webClient.post()
@@ -76,16 +82,25 @@ public class PaymentAdapterImpl implements PaymentAdapter {
                 .bodyToMono(HoldRs.class);
     }
 
+    /**
+     * Подтверждает hold-операцию в платежном сервисе.
+     */
     @Override
     public Mono<Void> confirm(UUID paymentId) {
         return exchangeMethod(paymentId, PAYMENT_CONFIRM);
     }
 
+    /**
+     * Отменяет hold-операцию в платежном сервисе.
+     */
     @Override
     public Mono<Void> cancel(UUID paymentId) {
         return exchangeMethod(paymentId, PAYMENT_CANCEL);
     }
 
+    /**
+     * Выполняет типовую POST-операцию confirm/cancel и маппит ошибки интеграции.
+     */
     private Mono<Void> exchangeMethod(UUID paymentId, String uri) {
         return webClient.post()
                 .uri(uri + paymentId)

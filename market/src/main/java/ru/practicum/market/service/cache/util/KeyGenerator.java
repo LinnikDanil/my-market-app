@@ -8,6 +8,9 @@ import java.util.stream.Collectors;
 
 @UtilityClass
 public class KeyGenerator {
+    /**
+     * Генерирует ключ кэша для страницы товаров.
+     */
     public static String generateKeyForItemsPage(String search, Pageable pageable) {
         return (search == null || search.isBlank() ? "_" : search)
                 + "|" + pageable.getSort()
@@ -15,6 +18,9 @@ public class KeyGenerator {
                 + "|" + pageable.getPageSize();
     }
 
+    /**
+     * Генерирует ключ кэша корзины на основе отсортированного списка id.
+     */
     public static String generateKeyForCart(List<Long> ids) {
         return ids.stream()
                 .sorted()
