@@ -1,13 +1,13 @@
 package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.web.bind.QueryBinder;
+import ru.practicum.market.web.view.PageRenderHelper;
 
 import java.util.Map;
 
@@ -17,21 +17,18 @@ public class CartHandler {
 
     private final ItemService itemService;
     private final QueryBinder binder;
+    private final PageRenderHelper pageRenderHelper;
 
     /**
      * Отображает страницу корзины.
      */
     public Mono<ServerResponse> getCart(ServerRequest request) {
         return itemService.getCart()
-                .flatMap(cart ->
-                        ServerResponse.ok()
-                                .contentType(MediaType.TEXT_HTML)
-                                .render("cart", Map.of(
-                                        "items", cart.items(),
-                                        "total", cart.total(),
-                                        "isActive", cart.isActiveButton()
-                                ))
-                );
+                .flatMap(cart -> pageRenderHelper.ok(request, "cart", Map.of(
+                        "items", cart.items(),
+                        "total", cart.total(),
+                        "isActive", cart.isActiveButton()
+                )));
     }
 
     /**

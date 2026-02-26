@@ -1,7 +1,6 @@
 package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -9,6 +8,7 @@ import org.thymeleaf.spring6.context.webflux.ReactiveDataDriverContextVariable;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.service.OrderService;
 import ru.practicum.market.web.bind.QueryBinder;
+import ru.practicum.market.web.view.PageRenderHelper;
 
 import java.net.URI;
 import java.util.Map;
@@ -19,6 +19,7 @@ public class OrderHandler {
 
     private final OrderService orderService;
     private final QueryBinder binder;
+    private final PageRenderHelper pageRenderHelper;
 
     /**
      * Отображает страницу списка заказов.
@@ -30,9 +31,7 @@ public class OrderHandler {
                 10
         );
 
-        return ServerResponse.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .render("orders", Map.of("orders", ordersDriver));
+        return pageRenderHelper.ok(request, "orders", Map.of("orders", ordersDriver));
     }
 
     /**
@@ -43,14 +42,10 @@ public class OrderHandler {
         boolean newOrder = binder.bindParamNewOrder(request);
 
         return orderService.getOrder(id)
-                .flatMap(order ->
-                        ServerResponse.ok()
-                                .contentType(MediaType.TEXT_HTML)
-                                .render("order", Map.of(
-                                        "order", order,
-                                        "newOrder", newOrder)
-                                )
-                );
+                .flatMap(order -> pageRenderHelper.ok(request, "order", Map.of(
+                        "order", order,
+                        "newOrder", newOrder)
+                ));
     }
 
     /**

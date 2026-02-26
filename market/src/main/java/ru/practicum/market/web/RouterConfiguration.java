@@ -6,10 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import ru.practicum.market.web.handler.AdminHandler;
-import ru.practicum.market.web.handler.CartHandler;
-import ru.practicum.market.web.handler.ItemHandler;
-import ru.practicum.market.web.handler.OrderHandler;
+import ru.practicum.market.web.handler.*;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
 import ru.practicum.market.web.filter.RouteLoggingFilter;
 
@@ -26,6 +23,7 @@ public class RouterConfiguration {
             RouterFunction<ServerResponse> cartRoutes,
             RouterFunction<ServerResponse> orderRoutes,
             RouterFunction<ServerResponse> adminRoutes,
+            RouterFunction<ServerResponse> loginRoutes,
             RouteLoggingFilter routeLoggingFilter,
             RouteExceptionFilter routeExceptionFilter
     ) {
@@ -33,6 +31,7 @@ public class RouterConfiguration {
                 .and(cartRoutes)
                 .and(orderRoutes)
                 .and(adminRoutes)
+                .and(loginRoutes)
                 .filter(routeLoggingFilter.logging())
                 .filter(routeExceptionFilter.errors());
     }
@@ -93,6 +92,16 @@ public class RouterConfiguration {
                                 .POST("/{id}/image", adminHandler::uploadImage)
                         )
                 )
+                .build();
+    }
+
+    /**
+     * Регистрирует маршруты аутентификации.
+     */
+    @Bean
+    public RouterFunction<ServerResponse> loginRoutes(LoginHandler loginHandler) {
+        return RouterFunctions.route()
+                .GET("/login", loginHandler::login)
                 .build();
     }
 

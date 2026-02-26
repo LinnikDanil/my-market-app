@@ -43,6 +43,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Загрузка товаров из Excel</h5>
                         <form th:action="@{/admin/items/upload}" method="post" enctype="multipart/form-data" class="vstack gap-3">
+                            <th:block th:replace="~{fragments/csrf :: token}"></th:block>
                             <div>
                                 <label for="itemsFile" class="form-label">Файл Excel</label>
                                 <input type="file" class="form-control" id="itemsFile" name="file" accept=".xlsx,.xls" required>
@@ -58,6 +59,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Загрузка изображения товара</h5>
                         <form th:action="@{/admin/items/{id}/image(id=${#lists.isEmpty(items) ? 0 : items.get(0).id})}" method="post" enctype="multipart/form-data" class="vstack gap-3">
+                            <th:block th:replace="~{fragments/csrf :: token}"></th:block>
                             <div>
                                 <label for="itemId" class="form-label">Товар</label>
                                 <select class="form-select" id="itemId" name="id" onchange="this.form.action='/admin/items/' + this.value + '/image'" th:disabled="${#lists.isEmpty(items)}" required>

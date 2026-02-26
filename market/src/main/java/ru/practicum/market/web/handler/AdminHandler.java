@@ -1,7 +1,6 @@
 package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -11,6 +10,7 @@ import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.service.AdminService;
 import ru.practicum.market.web.bind.QueryBinder;
+import ru.practicum.market.web.view.PageRenderHelper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -21,6 +21,7 @@ public class AdminHandler {
 
     private final AdminService adminService;
     private final QueryBinder binder;
+    private final PageRenderHelper pageRenderHelper;
 
     /**
      * Отображает админ-страницу со списком товаров.
@@ -28,9 +29,7 @@ public class AdminHandler {
     public Mono<ServerResponse> getAdminPage(ServerRequest request) {
         return adminService.getAllItems()
                 .collectList()
-                .flatMap(items -> ServerResponse.ok()
-                        .contentType(MediaType.TEXT_HTML)
-                        .render("admin", Map.of("items", items)));
+                .flatMap(items -> pageRenderHelper.ok(request, "admin", Map.of("items", items)));
     }
 
     /**

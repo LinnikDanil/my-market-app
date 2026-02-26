@@ -1,7 +1,6 @@
 package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -10,6 +9,7 @@ import reactor.core.publisher.Mono;
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.web.bind.QueryBinder;
 import ru.practicum.market.web.dto.ItemsResponseDto;
+import ru.practicum.market.web.view.PageRenderHelper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,6 +20,7 @@ public class ItemHandler {
 
     private final ItemService itemService;
     private final QueryBinder binder;
+    private final PageRenderHelper pageRenderHelper;
 
     /**
      * Отображает страницу каталога товаров.
@@ -33,9 +34,7 @@ public class ItemHandler {
                         itemsQuery.pageSize()
                 )
                 .flatMap(itemsResponseDto ->
-                        ServerResponse.ok()
-                                .contentType(MediaType.TEXT_HTML)
-                                .render("items", buildItemsModel(itemsResponseDto))
+                        pageRenderHelper.ok(request, "items", buildItemsModel(itemsResponseDto))
                 );
     }
 
@@ -44,7 +43,7 @@ public class ItemHandler {
      */
     public Mono<ServerResponse> getItem(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
-        return getItemById(id);
+        return getItemById(request, id);
     }
 
     /**
@@ -74,18 +73,15 @@ public class ItemHandler {
         var action = binder.bindParamAction(request);
 
         return itemService.updateItemsCountInCart(id, action)
-                .then(getItemById(id));
+                .then(getItemById(request, id));
     }
 
     /**
      * Рендерит карточку товара по id.
      */
-    private Mono<ServerResponse> getItemById(long id) {
+    private Mono<ServerResponse> getItemById(ServerRequest request, long id) {
         return itemService.getItem(id)
-                .flatMap(item ->
-                        ServerResponse.ok()
-                                .contentType(MediaType.TEXT_HTML)
-                                .render("item", Map.of("item", item)));
+                .flatMap(item -> pageRenderHelper.ok(request, "item", Map.of("item", item)));
     }
 
     /**
