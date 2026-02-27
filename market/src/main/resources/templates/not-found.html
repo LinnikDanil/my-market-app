@@ -16,9 +16,9 @@
                     <h2>
                         <span class="badge text-bg-success">Витрина магазина</span>
                     </h2>
-                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
-                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
-                    <a href="/admin" class="btn btn-outline-dark bi bi-gear"> Админ</a>
+                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text" th:if="${authenticated}"> Заказы</a>
+                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4" th:if="${authenticated}"> Корзина</a>
+                    <a href="/admin" class="btn btn-outline-dark bi bi-gear" th:if="${authenticated}"> Админ</a>
                     <th:block th:replace="~{fragments/logout :: button}"></th:block>
                 </div>
             </div>
@@ -34,8 +34,8 @@
                                 <p class="card-text mb-2">Запрашиваемый ресурс <span th:text="${id}" class="fw-semibold"></span> не найден или удалён.</p>
                                 <div class="hstack gap-2">
                                     <a href="/items" class="btn btn-outline-primary btn-sm bi bi-arrow-left-square"> На главную</a>
-                                    <a href="/orders" class="btn btn-outline-secondary btn-sm bi bi-file-earmark-text"> Заказы</a>
-                                    <a href="/cart/items" class="btn btn-outline-secondary btn-sm bi bi-cart4"> Корзина</a>
+                                    <a href="/orders" class="btn btn-outline-secondary btn-sm bi bi-file-earmark-text" th:if="${authenticated}"> Заказы</a>
+                                    <a href="/cart/items" class="btn btn-outline-secondary btn-sm bi bi-cart4" th:if="${authenticated}"> Корзина</a>
                                 </div>
                             </div>
                         </div>

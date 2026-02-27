@@ -16,7 +16,7 @@
                     <h2>
                         <span class="badge text-bg-success">Витрина магазина</span>
                     </h2>
-                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4 ms-auto"> Корзина</a>
+                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4 ms-auto" th:if="${authenticated}"> Корзина</a>
                     <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
                     <th:block th:replace="~{fragments/logout :: button}"></th:block>
                 </div>

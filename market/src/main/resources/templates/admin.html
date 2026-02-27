@@ -16,7 +16,7 @@
                     <h2>
                         <span class="badge text-bg-success">Админ-панель</span>
                     </h2>
-                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
+                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text" th:if="${authenticated}"> Заказы</a>
                     <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
                     <th:block th:replace="~{fragments/logout :: button}"></th:block>
                 </div>

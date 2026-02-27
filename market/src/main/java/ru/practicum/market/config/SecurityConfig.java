@@ -12,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler;
 import org.springframework.security.web.server.authentication.logout.RedirectServerLogoutSuccessHandler;
-import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
+import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.server.csrf.WebSessionServerCsrfTokenRepository;
 
 import java.net.URI;
@@ -31,6 +31,14 @@ public class SecurityConfig {
     @Bean
     public WebSessionServerCsrfTokenRepository csrfTokenRepository() {
         return new WebSessionServerCsrfTokenRepository();
+    }
+
+    @Bean
+    public ServerCsrfTokenRequestAttributeHandler csrfTokenRequestHandler() {
+        ServerCsrfTokenRequestAttributeHandler requestHandler = new ServerCsrfTokenRequestAttributeHandler();
+        // Включаем чтение CSRF-токена из multipart/form-data (нужно для upload-форм).
+        requestHandler.setTokenFromMultipartDataEnabled(true);
+        return requestHandler;
     }
 
     // Создаём in-memory пользователя
@@ -54,15 +62,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
-                                                            WebSessionServerCsrfTokenRepository  csrfTokenRepository,
+                                                            WebSessionServerCsrfTokenRepository csrfTokenRepository,
+                                                            ServerCsrfTokenRequestAttributeHandler csrfTokenRequestHandler,
                                                             RedirectServerLogoutSuccessHandler redirectServerLogoutSuccessHandler) {
         http
             .csrf(csrf -> csrf
                 .csrfTokenRepository(csrfTokenRepository)
+                .csrfTokenRequestHandler(csrfTokenRequestHandler)
             )
-            // Явно разрешаем доступ к /login и / для всех
             .authorizeExchange(exchanges -> exchanges
-            .pathMatchers("/", "/login").permitAll()
+            .pathMatchers("/", "/login", "/items/**", "/images/**").permitAll()
             .anyExchange().authenticated()
         )
             // Настраиваем форму логина

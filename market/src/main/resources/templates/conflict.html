@@ -16,9 +16,9 @@
                     <h2>
                         <span class="badge text-bg-success">Витрина магазина</span>
                     </h2>
-                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
-                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
-                    <a href="/admin" class="btn btn-outline-dark bi bi-gear"> Админ</a>
+                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text" th:if="${authenticated}"> Заказы</a>
+                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4" th:if="${authenticated}"> Корзина</a>
+                    <a href="/admin" class="btn btn-outline-dark bi bi-gear" th:if="${authenticated}"> Админ</a>
                     <th:block th:replace="~{fragments/logout :: button}"></th:block>
                 </div>
             </div>
@@ -33,7 +33,7 @@
                                 <h4 class="card-title mb-2">Конфликт действия</h4>
                                 <p class="card-text mb-2">Запрошенная операция не может быть выполнена из-за состояния данных. Обновите страницу и убедитесь, что корзина или заказ актуальны.</p>
                                 <div class="hstack gap-2">
-                                    <a href="/orders" class="btn btn-outline-info btn-sm bi bi-arrow-clockwise"> Обновить заказы</a>
+                                    <a href="/orders" class="btn btn-outline-info btn-sm bi bi-arrow-clockwise" th:if="${authenticated}"> Обновить заказы</a>
                                     <a href="/items" class="btn btn-outline-primary btn-sm bi bi-arrow-left-square"> На главную</a>
                                 </div>
                             </div>

@@ -237,6 +237,8 @@ public class ItemServiceImpl implements ItemService {
         var pageNumber = pageable.getPageNumber() + 1;
         var hasPreviousPage = pageNumber > 1;
         var hasNextPage = pageable.getOffset() + itemsSize < itemsCount;
+        log.debug("Paging calculated: pageNumber={}, pageSize={}, offset={}, itemsOnPage={}, itemsTotal={}, hasPrevious={}, hasNext={}",
+                pageNumber, pageable.getPageSize(), pageable.getOffset(), itemsSize, itemsCount, hasPreviousPage, hasNextPage);
 
         return new Paging(pageable.getPageSize(), pageNumber, hasPreviousPage, hasNextPage);
     }
