@@ -21,6 +21,8 @@
                     <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
                     <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
                     <a href="/admin" class="btn btn-outline-dark bi bi-gear"> Админ</a>
+                    <a href="/login" class="btn btn-outline-primary bi bi-box-arrow-in-right" th:if="${!authenticated}"> Войти</a>
+                    <th:block th:replace="~{fragments/logout :: button}"></th:block>
                 </div>
             </div>
         </div>
@@ -87,13 +89,12 @@
         <div class="row p-2">
             <div class="col">
                 <div class="hstack gap-3 justify-content-center">
-                    <button type="submit" class="btn btn-light" th:if="${paging.hasPrevious()}" name="pageNumber" th:value="${paging.pageNumber()-1}">&larr;</button>
+                    <button type="submit" class="btn btn-light" th:if="${paging.hasPrevious()}" name="pageNumber" th:value="${paging.pageNumber()-1}" form="main">&larr;</button>
                     <span th:text="${'Страница: '+paging.pageNumber()}"></span>
-                    <button type="submit" class="btn btn-light" th:if="${paging.hasNext()}" name="pageNumber" th:value="${paging.pageNumber()+1}">&rarr;</button>
+                    <button type="submit" class="btn btn-light" th:if="${paging.hasNext()}" name="pageNumber" th:value="${paging.pageNumber()+1}" form="main">&rarr;</button>
                 </div>
             </div>
         </div>
-        </form>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>

@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="button">
+    <form th:if="${authenticated and _csrf != null}" th:action="@{/logout}" method="post" class="d-inline">
+        <th:block th:replace="~{fragments/csrf :: token}"></th:block>
+        <button type="submit" class="btn btn-outline-danger bi bi-box-arrow-right"> Выйти</button>
+    </form>
+</th:block>
+</body>
+</html>

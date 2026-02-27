@@ -19,6 +19,8 @@
                     <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
                     <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
                     <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
+                    <a href="/login" class="btn btn-outline-primary bi bi-box-arrow-in-right" th:if="${!authenticated}"> Войти</a>
+                    <th:block th:replace="~{fragments/logout :: button}"></th:block>
                 </div>
             </div>
         </div>

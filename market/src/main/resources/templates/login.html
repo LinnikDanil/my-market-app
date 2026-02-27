@@ -34,6 +34,9 @@
     <div class="card shadow-sm login-container mx-auto">
         <div class="card-body">
             <h2 class="card-title text-center mb-4">Вход в систему</h2>
+            <div class="d-flex justify-content-end mb-3">
+                <th:block th:replace="~{fragments/logout :: button}"></th:block>
+            </div>
 
             <!-- Сообщение об ошибке (видимо только при param.error) -->
             <div th:if="${param.error != null && !param.error.isEmpty()}"
