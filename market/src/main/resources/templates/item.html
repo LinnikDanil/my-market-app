@@ -21,6 +21,7 @@
                         <a href="/cart/items" class="btn btn-secondary bi bi-cart4" th:if="${authenticated}"> Корзина</a>
                         <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
                         <a href="/login" class="btn btn-outline-primary bi bi-box-arrow-in-right" th:if="${!authenticated}"> Войти</a>
+                        <a href="/registerform" class="btn btn-outline-secondary bi bi-person-plus" th:if="${!authenticated}"> Регистрация</a>
                         <th:block th:replace="~{fragments/logout :: button}"></th:block>
                     </div>
                 </div>

@@ -4,6 +4,7 @@ import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
@@ -12,11 +13,7 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ServerWebInputException;
 import reactor.core.publisher.Mono;
-import ru.practicum.market.domain.exception.ItemImageBadRequest;
-import ru.practicum.market.domain.exception.ItemUploadException;
-import ru.practicum.market.domain.exception.MarketBadRequestException;
-import ru.practicum.market.domain.exception.NotFoundExceptionAbstract;
-import ru.practicum.market.domain.exception.OrderConflictException;
+import ru.practicum.market.domain.exception.*;
 import ru.practicum.market.integration.exception.PaymentBalanceException;
 import ru.practicum.market.integration.exception.PaymentIdNotFoundException;
 import ru.practicum.market.integration.exception.PaymentServiceUnavailableException;
@@ -44,6 +41,9 @@ public class RouteExceptionFilter {
 
                         .onErrorResume(ItemImageBadRequest.class, e -> adminBadRequest(e, request))
                         .onErrorResume(ItemUploadException.class, e -> adminBadRequest(e, request))
+
+                        .onErrorResume(UserAlreadyExistsException.class, e -> userAlreadyExists(e, request))
+                        .onErrorResume(AccessDeniedException.class, e -> accessDenied(e, request))
 
                         .onErrorResume(NotFoundExceptionAbstract.class, e -> notFound(e, request))
 
@@ -120,6 +120,16 @@ public class RouteExceptionFilter {
     private Mono<ServerResponse> adminBadRequest(Exception e, ServerRequest request) {
         logException(e);
         return ServerResponse.status(HttpStatus.BAD_REQUEST).render("admin-error");
+    }
+
+    private Mono<ServerResponse> userAlreadyExists(Exception e, ServerRequest request) {
+        logException(e);
+        return ServerResponse.status(HttpStatus.CONFLICT).render("user-exists");
+    }
+
+    private Mono<ServerResponse> accessDenied(Exception e, ServerRequest request) {
+        logException(e);
+        return ServerResponse.status(HttpStatus.FORBIDDEN).render("access-denied");
     }
 
     /**

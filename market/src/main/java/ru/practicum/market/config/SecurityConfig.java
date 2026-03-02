@@ -2,6 +2,7 @@ package ru.practicum.market.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -34,7 +35,8 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(csrfTokenRequestHandler)
                 )
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/", "/login", "/items/**", "/images/**").permitAll()
+                        .pathMatchers("/", "/login", "/register", "/registerform",
+                                "/access-denied", "/items/**", "/images/**").permitAll()
                         .pathMatchers("/cart/**", "/orders/**", "/buy/**").hasAnyRole("USER", "ADMIN")
                         .pathMatchers("/admin/**").hasRole("ADMIN")
                         .anyExchange().authenticated()
@@ -53,6 +55,13 @@ public class SecurityConfig {
                         // URL страницы выхода
                         .logoutUrl("/logout")
                         .logoutSuccessHandler(redirectServerLogoutSuccessHandler)
+                )
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .accessDeniedHandler((exchange, denied) -> {
+                            exchange.getResponse().setStatusCode(HttpStatus.SEE_OTHER);
+                            exchange.getResponse().getHeaders().setLocation(URI.create("/access-denied"));
+                            return exchange.getResponse().setComplete();
+                        })
                 );
         // OAuth2 Client для WebClient
 //            .oauth2Client(withDefaults());

@@ -6,9 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import ru.practicum.market.web.handler.*;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
 import ru.practicum.market.web.filter.RouteLoggingFilter;
+import ru.practicum.market.web.handler.*;
 
 @Slf4j
 @Configuration
@@ -23,7 +23,7 @@ public class RouterConfiguration {
             RouterFunction<ServerResponse> cartRoutes,
             RouterFunction<ServerResponse> orderRoutes,
             RouterFunction<ServerResponse> adminRoutes,
-            RouterFunction<ServerResponse> loginRoutes,
+            RouterFunction<ServerResponse> authRoutes,
             RouteLoggingFilter routeLoggingFilter,
             RouteExceptionFilter routeExceptionFilter
     ) {
@@ -31,7 +31,7 @@ public class RouterConfiguration {
                 .and(cartRoutes)
                 .and(orderRoutes)
                 .and(adminRoutes)
-                .and(loginRoutes)
+                .and(authRoutes)
                 .filter(routeLoggingFilter.logging())
                 .filter(routeExceptionFilter.errors());
     }
@@ -99,9 +99,12 @@ public class RouterConfiguration {
      * Регистрирует маршруты аутентификации.
      */
     @Bean
-    public RouterFunction<ServerResponse> loginRoutes(LoginHandler loginHandler) {
+    public RouterFunction<ServerResponse> authRoutes(AuthHandler authHandler) {
         return RouterFunctions.route()
-                .GET("/login", loginHandler::login)
+                .GET("/login", authHandler::login)
+                .GET("/registerform", authHandler::registerForm)
+                .GET("/access-denied", authHandler::accessDenied)
+                .POST("/register", authHandler::register)
                 .build();
     }
 
