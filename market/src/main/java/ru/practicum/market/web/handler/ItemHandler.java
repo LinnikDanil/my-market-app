@@ -1,6 +1,7 @@
 package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -25,6 +26,7 @@ public class ItemHandler {
     /**
      * Отображает страницу каталога товаров.
      */
+    @PreAuthorize("permitAll()")
     public Mono<ServerResponse> getItems(ServerRequest request) {
         var itemsQuery = binder.bindItemsQuery(request);
         return itemService.getItems(
@@ -41,6 +43,7 @@ public class ItemHandler {
     /**
      * Отображает страницу конкретного товара.
      */
+    @PreAuthorize("permitAll()")
     public Mono<ServerResponse> getItem(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
         return getItemById(request, id);
@@ -49,6 +52,7 @@ public class ItemHandler {
     /**
      * Обновляет количество товара в корзине из списка товаров и делает redirect обратно в каталог.
      */
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Mono<ServerResponse> updateItemsCountInCartForItems(ServerRequest request) {
         var id = binder.bindParamId(request);
         var action = binder.bindParamAction(request);
@@ -68,6 +72,7 @@ public class ItemHandler {
     /**
      * Обновляет количество товара в корзине со страницы карточки товара.
      */
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Mono<ServerResponse> updateItemsCountInCartForItem(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
         var action = binder.bindParamAction(request);

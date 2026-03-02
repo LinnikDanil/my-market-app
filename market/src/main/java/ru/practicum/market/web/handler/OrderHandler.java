@@ -1,6 +1,7 @@
 package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -24,6 +25,7 @@ public class OrderHandler {
     /**
      * Отображает страницу списка заказов.
      */
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Mono<ServerResponse> getOrders(ServerRequest request) {
 
         var ordersDriver = new ReactiveDataDriverContextVariable(
@@ -37,6 +39,7 @@ public class OrderHandler {
     /**
      * Отображает страницу конкретного заказа.
      */
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Mono<ServerResponse> getOrder(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
         boolean newOrder = binder.bindParamNewOrder(request);
@@ -51,6 +54,7 @@ public class OrderHandler {
     /**
      * Создает заказ из корзины и перенаправляет на страницу созданного заказа.
      */
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Mono<ServerResponse> createOrder(ServerRequest request) {
         return orderService.createOrder()
                 .flatMap(id ->

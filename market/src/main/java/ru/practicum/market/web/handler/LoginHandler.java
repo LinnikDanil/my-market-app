@@ -1,6 +1,7 @@
 package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -16,6 +17,7 @@ public class LoginHandler {
     /**
      * Отображает страницу аутентификации.
      */
+    @PreAuthorize("permitAll()")
     public Mono<ServerResponse> login(ServerRequest request) {
         return pageRenderHelper.ok(request, "login");
     }

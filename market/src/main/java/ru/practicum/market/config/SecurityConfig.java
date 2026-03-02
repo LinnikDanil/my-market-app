@@ -2,11 +2,12 @@ package ru.practicum.market.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -17,15 +18,52 @@ import org.springframework.security.web.server.csrf.WebSessionServerCsrfTokenRep
 
 import java.net.URI;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
 @EnableWebFluxSecurity
+@EnableReactiveMethodSecurity
 public class SecurityConfig {
+
+    @Bean
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
+                                                            WebSessionServerCsrfTokenRepository csrfTokenRepository,
+                                                            ServerCsrfTokenRequestAttributeHandler csrfTokenRequestHandler,
+                                                            RedirectServerLogoutSuccessHandler redirectServerLogoutSuccessHandler) {
+        http
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfTokenRepository)
+                        .csrfTokenRequestHandler(csrfTokenRequestHandler)
+                )
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/", "/login", "/items/**", "/images/**").permitAll()
+                        .pathMatchers("/cart/**", "/orders/**", "/buy/**").hasAnyRole("USER", "ADMIN")
+                        .pathMatchers("/admin/**").hasRole("ADMIN")
+                        .anyExchange().authenticated()
+                )
+                // Настраиваем форму логина
+                .formLogin(form -> form
+                        // URL страницы логина
+                        .loginPage("/login")
+                        .authenticationSuccessHandler(
+                                // В случае успешного логина, перенаправляем на домашнюю страницу
+                                new RedirectServerAuthenticationSuccessHandler("/")
+                        )
+                )
+                // Настраиваем обработку при выходе
+                .logout(logout -> logout
+                        // URL страницы выхода
+                        .logoutUrl("/logout")
+                        .logoutSuccessHandler(redirectServerLogoutSuccessHandler)
+                );
+        // OAuth2 Client для WebClient
+//            .oauth2Client(withDefaults());
+
+        return http.build();
+    }
+
     // Защищаем пароли шифрованием
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(11);
     }
 
     @Bean
@@ -41,14 +79,14 @@ public class SecurityConfig {
         return requestHandler;
     }
 
-    // Создаём in-memory пользователя
     @Bean
-    public MapReactiveUserDetailsService userDetailsService() {
-        UserDetails user = User.withUsername("user")
-            .password(passwordEncoder().encode("password"))
-            .roles("USER")
-            .build();
-        return new MapReactiveUserDetailsService(user);
+    public ReactiveAuthenticationManager reactiveAuthenticationManager(
+            ReactiveUserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder
+    ) {
+        var manager = new UserDetailsRepositoryReactiveAuthenticationManager(userDetailsService);
+        manager.setPasswordEncoder(passwordEncoder);
+        return manager;
     }
 
     // Настраиваем поведение при выходе
@@ -58,40 +96,5 @@ public class SecurityConfig {
         // При выходе перенаправляем его на домашнюю страницу
         logoutSuccessHandler.setLogoutSuccessUrl(URI.create("/"));
         return logoutSuccessHandler;
-    }
-
-    @Bean
-    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
-                                                            WebSessionServerCsrfTokenRepository csrfTokenRepository,
-                                                            ServerCsrfTokenRequestAttributeHandler csrfTokenRequestHandler,
-                                                            RedirectServerLogoutSuccessHandler redirectServerLogoutSuccessHandler) {
-        http
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(csrfTokenRepository)
-                .csrfTokenRequestHandler(csrfTokenRequestHandler)
-            )
-            .authorizeExchange(exchanges -> exchanges
-            .pathMatchers("/", "/login", "/items/**", "/images/**").permitAll()
-            .anyExchange().authenticated()
-        )
-            // Настраиваем форму логина
-            .formLogin(form -> form
-                // URL страницы логина
-                .loginPage("/login")
-                .authenticationSuccessHandler(
-                    // В случае успешного логина, перенаправляем на домашнюю страницу
-                    new RedirectServerAuthenticationSuccessHandler("/")
-                )
-            )
-            // Настраиваем обработку при выходе
-            .logout(logout -> logout
-                // URL страницы выхода
-                .logoutUrl("/logout")
-                .logoutSuccessHandler(redirectServerLogoutSuccessHandler)
-            );
-            // OAuth2 Client для WebClient
-//            .oauth2Client(withDefaults());
-
-        return http.build();
     }
 }

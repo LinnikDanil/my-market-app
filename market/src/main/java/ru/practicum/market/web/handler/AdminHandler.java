@@ -2,6 +2,7 @@ package ru.practicum.market.web.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -26,6 +27,7 @@ public class AdminHandler {
     /**
      * Отображает админ-страницу со списком товаров.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     public Mono<ServerResponse> getAdminPage(ServerRequest request) {
         return adminService.getAllItems()
                 .collectList()
@@ -35,6 +37,7 @@ public class AdminHandler {
     /**
      * Принимает Excel-файл товаров и перенаправляет на страницу admin с сообщением.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     public Mono<ServerResponse> uploadItems(ServerRequest request) {
         return request.multipartData()
                 .flatMap(parts -> {
@@ -53,6 +56,7 @@ public class AdminHandler {
     /**
      * Загружает изображение для товара и перенаправляет на страницу admin с сообщением.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     public Mono<ServerResponse> uploadImage(ServerRequest request) {
         var id = binder.bindPathVariableId(request);
 
