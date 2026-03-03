@@ -40,7 +40,7 @@ public class AuthHandler {
      */
     @PreAuthorize("permitAll()")
     public Mono<ServerResponse> accessDenied(ServerRequest request) {
-        return pageRenderHelper.ok(request, "access-denied");
+        return pageRenderHelper.ok(request, "errors/access-denied");
     }
 
     /**

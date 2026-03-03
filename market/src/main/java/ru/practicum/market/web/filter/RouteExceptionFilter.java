@@ -62,7 +62,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> paymentNofFound(RuntimeException e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).render("payment-not-found");
+        return ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).render("errors/payment-not-found");
     }
 
     /**
@@ -103,7 +103,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> oops(Exception e, ServerRequest request) {
         log.error("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
-        return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).render("oops");
+        return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).render("errors/oops");
     }
 
     /**
@@ -111,7 +111,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> badRequest(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.BAD_REQUEST).render("bad-request");
+        return ServerResponse.status(HttpStatus.BAD_REQUEST).render("errors/bad-request");
     }
 
     /**
@@ -119,17 +119,17 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> adminBadRequest(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.BAD_REQUEST).render("admin-error");
+        return ServerResponse.status(HttpStatus.BAD_REQUEST).render("errors/admin-error");
     }
 
     private Mono<ServerResponse> userAlreadyExists(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.CONFLICT).render("user-exists");
+        return ServerResponse.status(HttpStatus.CONFLICT).render("errors/user-exists");
     }
 
     private Mono<ServerResponse> accessDenied(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.FORBIDDEN).render("access-denied");
+        return ServerResponse.status(HttpStatus.FORBIDDEN).render("errors/access-denied");
     }
 
     /**
@@ -138,7 +138,7 @@ public class RouteExceptionFilter {
     private Mono<ServerResponse> notFound(NotFoundExceptionAbstract e, ServerRequest request) {
         logException(e);
         return ServerResponse.status(HttpStatus.NOT_FOUND)
-                .render("not-found", Map.of("id", String.valueOf(e.getId())));
+                .render("errors/not-found", Map.of("id", String.valueOf(e.getId())));
     }
 
     /**
@@ -146,7 +146,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> conflict(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.CONFLICT).render("conflict");
+        return ServerResponse.status(HttpStatus.CONFLICT).render("errors/conflict");
     }
 
     /**
