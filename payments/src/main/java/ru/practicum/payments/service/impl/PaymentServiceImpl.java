@@ -13,21 +13,20 @@ import ru.practicum.payments.service.PaymentService;
 import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Учебная реализация сервиса платежей с двухфазной схемой списания: hold → confirm / cancel.
  *
  * <h2>Модель</h2>
  * <ul>
- *   <li>В приложении существует один общий баланс (без пользователей и счетов).</li>
+ *   <li>У каждого пользователя свой баланс, определяемый по {@code userId}.</li>
  *   <li>Баланс хранится в памяти процесса и не переживает перезапуск приложения.</li>
  *   <li>Поддерживаются "заморозки" (holds) — временные резервы сумм под списание.</li>
  * </ul>
  *
  * <h2>Двухфазная схема</h2>
  * <ul>
- *   <li>{@link #holdPayment(Mono)}: резервирует сумму и уменьшает доступный баланс.
+ *   <li>{@link PaymentService#holdPayment(Long, Mono)}: резервирует сумму и уменьшает доступный баланс.
  *       Возвращает {@code paymentId}, по которому операция может быть подтверждена или отменена.</li>
  *   <li>{@link #confirmPayment(UUID)}: подтверждает ранее созданный hold и завершает операцию.
  *       В текущей реализации дополнительного списания не происходит, т.к. баланс уже уменьшен на этапе hold.</li>
@@ -37,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <h2>Ограничения учебной реализации</h2>
  * <ul>
- *   <li>Нет пользователей, счетов и привязки к {@code userId}.</li>
+ *   <li>Нет хранения в БД, только in-memory состояние процесса.</li>
  *   <li>Нет срока жизни hold (TTL) и фоновой очистки "зависших" hold-ов.</li>
  *   <li>Нет статусов hold-ов (HELD/CONFIRMED/CANCELED), поэтому повторные confirm/cancel
  *       для одного {@code paymentId} будут приводить к ошибке "не найдено".</li>
@@ -50,15 +49,19 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 @Service
 public class PaymentServiceImpl implements PaymentService {
-    private final AtomicReference<BigDecimal> balance;
-    private final ConcurrentHashMap<UUID, BigDecimal> holds;
+    private static final BigDecimal DEFAULT_BALANCE = BigDecimal.valueOf(5000);
+
+    private final ConcurrentHashMap<Long, BigDecimal> userBalances;
+    private final ConcurrentHashMap<UUID, HoldOperation> holds;
+
+    private record HoldOperation(Long userId, BigDecimal amount) {
+    }
 
     /**
      * Инициализирует сервис стартовым балансом и пустым набором hold-операций.
      */
     public PaymentServiceImpl() {
-        log.info("Стартовый баланс установлен в 5000 рублей.");
-        balance = new AtomicReference<>(BigDecimal.valueOf(5000));
+        userBalances = new ConcurrentHashMap<>();
         holds = new ConcurrentHashMap<>();
     }
 
@@ -66,9 +69,9 @@ public class PaymentServiceImpl implements PaymentService {
      * Возвращает текущий баланс.
      */
     @Override
-    public Mono<BigDecimal> getBalance() {
-        var currentBalance = balance.get();
-        log.debug("Getting balance = {}.", currentBalance);
+    public Mono<BigDecimal> getBalance(Long userId) {
+        var currentBalance = userBalances.computeIfAbsent(userId, ignored -> DEFAULT_BALANCE);
+        log.debug("Getting balance for user {} = {}.", userId, currentBalance);
         return Mono.just(currentBalance);
     }
 
@@ -76,13 +79,16 @@ public class PaymentServiceImpl implements PaymentService {
      * Пополняет баланс на сумму из запроса.
      */
     @Override
-    public Mono<Void> replenishBalance(Mono<Payment> paymentMono) {
+    public Mono<Void> replenishBalance(Long userId, Mono<Payment> paymentMono) {
         return paymentMono
                 .map(Payment::getAmount)
                 .doOnNext(amount -> {
-                    log.debug("Replenish balance at {}.", amount);
-                    var newBalance = balance.updateAndGet(b -> b.add(amount));
-                    log.debug("New balance at {}.", newBalance);
+                    log.debug("Replenish user {} balance at {}.", userId, amount);
+                    var newBalance = userBalances.compute(userId, (id, current) -> {
+                        var existingBalance = current == null ? DEFAULT_BALANCE : current;
+                        return existingBalance.add(amount);
+                    });
+                    log.debug("New user {} balance at {}.", userId, newBalance);
                 })
                 .then();
     }
@@ -91,24 +97,25 @@ public class PaymentServiceImpl implements PaymentService {
      * Резервирует сумму на оплату, уменьшая доступный баланс.
      */
     @Override
-    public Mono<HoldRs> holdPayment(Mono<HoldRq> paymentMono) {
+    public Mono<HoldRs> holdPayment(Long userId, Mono<HoldRq> paymentMono) {
         return paymentMono.flatMap(rq ->
                 Mono.fromCallable(() -> {
                     var amount = rq.getAmount();
 
                     // Списываем, пока не спишется или не вылетит ошибка
                     while (true) {
-                        var currentBalance = balance.get();
-                        log.debug("Try Hold payment on amount = {}, balance = {}.", amount, currentBalance);
+                        var currentBalance = userBalances.computeIfAbsent(userId, ignored -> DEFAULT_BALANCE);
+                        log.debug("Try Hold payment for user {} on amount = {}, balance = {}.", userId, amount, currentBalance);
                         if (currentBalance.compareTo(amount) < 0) {
                             throw new PaymentBalanceException(amount, "There are not enough funds to make the payment.");
                         }
                         var newBalance = currentBalance.subtract(amount);
-                        // Если никто другой не изменил текущий баланс завершаем метод
-                        if (balance.compareAndSet(currentBalance, newBalance)) {
+                        // Если никто другой не изменил текущий баланс, завершаем метод.
+                        if (userBalances.replace(userId, currentBalance, newBalance)) {
                             var paymentId = UUID.randomUUID();
-                            holds.put(paymentId, amount);
-                            log.debug("SUCCESSFUL Hold payment on amount = {}, new balance = {}.", amount, newBalance);
+                            holds.put(paymentId, new HoldOperation(userId, amount));
+                            log.debug("SUCCESSFUL Hold payment for user {} on amount = {}, new balance = {}.",
+                                    userId, amount, newBalance);
                             return new HoldRs(paymentId);
                         }
                     }
@@ -128,7 +135,7 @@ public class PaymentServiceImpl implements PaymentService {
             if (removed == null) {
                 throwAndLog(paymentId);
             }
-            log.debug("Confirmed hold with id = {} balance = {}.", paymentId, balance.get());
+            log.debug("Confirmed hold with id = {} for user {}.", paymentId, removed.userId());
         });
     }
 
@@ -141,13 +148,17 @@ public class PaymentServiceImpl implements PaymentService {
         log.debug("Cancel payment id = {}.", paymentId);
 
         return Mono.fromRunnable(() -> {
-            var amount = holds.remove(paymentId);
-            if (amount == null) {
+            var hold = holds.remove(paymentId);
+            if (hold == null) {
                 throwAndLog(paymentId);
             }
-            balance.updateAndGet(b -> b.add(amount));
+            var newBalance = userBalances.compute(hold.userId(), (id, current) -> {
+                var existingBalance = current == null ? DEFAULT_BALANCE : current;
+                return existingBalance.add(hold.amount());
+            });
 
-            log.debug("Cancelled hold with id = {} balance = {}.", paymentId, balance.get());
+            log.debug("Cancelled hold with id = {} for user {}. New balance = {}.",
+                    paymentId, hold.userId(), newBalance);
         });
     }
 

@@ -26,8 +26,8 @@ public class PaymentDelegateImpl implements DefaultApiDelegate {
      * Возвращает текущий баланс в формате API-ответа.
      */
     @Override
-    public Mono<ResponseEntity<Balance>> getBalance(ServerWebExchange exchange) {
-        return paymentService.getBalance()
+    public Mono<ResponseEntity<Balance>> getBalance(Long userId, ServerWebExchange exchange) {
+        return paymentService.getBalance(userId)
                 .map(balance ->
                         ResponseEntity.ok(
                                 new Balance(balance)
@@ -39,8 +39,8 @@ public class PaymentDelegateImpl implements DefaultApiDelegate {
      * Обрабатывает API-запрос пополнения баланса.
      */
     @Override
-    public Mono<ResponseEntity<Void>> replenishBalance(Mono<Payment> payment, ServerWebExchange exchange) {
-        return paymentService.replenishBalance(payment)
+    public Mono<ResponseEntity<Void>> replenishBalance(Long userId, Mono<Payment> payment, ServerWebExchange exchange) {
+        return paymentService.replenishBalance(userId, payment)
                 .then(Mono.fromCallable(() -> ResponseEntity.ok().build()));
     }
 
@@ -48,8 +48,8 @@ public class PaymentDelegateImpl implements DefaultApiDelegate {
      * Обрабатывает API-запрос на создание hold-операции.
      */
     @Override
-    public Mono<ResponseEntity<HoldRs>> holdPayment(Mono<HoldRq> holdRq, ServerWebExchange exchange) {
-        return paymentService.holdPayment(holdRq)
+    public Mono<ResponseEntity<HoldRs>> holdPayment(Long userId, Mono<HoldRq> holdRq, ServerWebExchange exchange) {
+        return paymentService.holdPayment(userId, holdRq)
                 .map(ResponseEntity::ok);
     }
 

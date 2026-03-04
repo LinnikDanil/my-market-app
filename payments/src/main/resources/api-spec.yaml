@@ -2,13 +2,20 @@ openapi: 3.0.3
 info:
   title: Payments Service API
   description: API осуществления платежей для витрины товаров.
-  version: 1.0.0
+  version: 1.1.0
 
 paths:
-  /api/payments/balance:
+  /api/payments/balance/{userId}:
     get:
       operationId: getBalance
       summary: Получение баланса на счёте
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
           description: Успешный ответ
@@ -31,6 +38,15 @@ paths:
     post:
       operationId: replenishBalance
       summary: Пополнить баланс
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type:
+              integer
+            format:
+              int64
       requestBody:
         required: true
         content:
@@ -53,10 +69,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/payments/hold:
+  /api/payments/hold/{userId}:
     post:
       operationId: holdPayment
       summary: Заморозить сумму для списания
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       requestBody:
         required: true
         content:

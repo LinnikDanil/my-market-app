@@ -18,23 +18,25 @@ public interface PaymentService {
      *
      * @return сумма баланса
      */
-    Mono<BigDecimal> getBalance();
+    Mono<BigDecimal> getBalance(Long userId);
 
     /**
      * Пополняет баланс на указанную сумму.
      *
+     * @param userId
      * @param payment запрос с суммой пополнения
      * @return сигнал завершения
      */
-    Mono<Void> replenishBalance(Mono<Payment> payment);
+    Mono<Void> replenishBalance(Long userId, Mono<Payment> payment);
 
     /**
      * Резервирует сумму на оплату.
      *
+     * @param userId
      * @param payment запрос hold
      * @return результат hold с идентификатором
      */
-    Mono<HoldRs> holdPayment(Mono<HoldRq> payment);
+    Mono<HoldRs> holdPayment(Long userId, Mono<HoldRq> payment);
 
     /**
      * Подтверждает ранее созданный hold.

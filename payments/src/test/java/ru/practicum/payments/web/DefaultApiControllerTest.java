@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -43,11 +44,11 @@ class DefaultApiControllerTest {
         @Test
         @DisplayName("ok")
         void test1() {
-            when(defaultApiDelegate.getBalance(any()))
+            when(defaultApiDelegate.getBalance(anyLong(), any()))
                     .thenReturn(Mono.just(ResponseEntity.ok(new Balance(BigDecimal.valueOf(1000)))));
 
             webTestClient.get()
-                    .uri("/api/payments/balance")
+                    .uri("/api/payments/balance/{userId}", 1L)
                     .exchange()
                     .expectStatus().isOk()
                     .expectHeader().contentType(MediaType.APPLICATION_JSON)
@@ -63,11 +64,11 @@ class DefaultApiControllerTest {
         @Test
         @DisplayName("ok")
         void test1() {
-            when(defaultApiDelegate.replenishBalance(any(), any()))
+            when(defaultApiDelegate.replenishBalance(anyLong(), any(), any()))
                     .thenReturn(Mono.just(ResponseEntity.ok().build()));
 
             webTestClient.post()
-                    .uri("/api/payments/balance")
+                    .uri("/api/payments/balance/{userId}", 1L)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(new Payment().amount(BigDecimal.valueOf(250)))
                     .exchange()
@@ -83,11 +84,11 @@ class DefaultApiControllerTest {
         @DisplayName("ok")
         void test1() {
             var paymentId = UUID.randomUUID();
-            when(defaultApiDelegate.holdPayment(any(), any()))
+            when(defaultApiDelegate.holdPayment(anyLong(), any(), any()))
                     .thenReturn(Mono.just(ResponseEntity.ok(new HoldRs(paymentId))));
 
             webTestClient.post()
-                    .uri("/api/payments/hold")
+                    .uri("/api/payments/hold/{userId}", 1L)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(new HoldRq().amount(BigDecimal.valueOf(350)))
                     .exchange()
