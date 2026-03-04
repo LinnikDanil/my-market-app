@@ -29,13 +29,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static ru.practicum.market.web.dto.enums.SortMethod.NO;
 
 @ExtendWith(MockitoExtension.class)
@@ -197,7 +192,7 @@ class ItemServiceImplTest {
                     .thenReturn(Mono.just(cartCacheDto));
             when(paymentAdapter.getBalance()).thenReturn(Mono.just(new Balance(BigDecimal.valueOf(10000))));
 
-            var cart = itemService.getCart().block();
+            var cart = itemService.getCart(id).block();
             assertThat(cart.items()).hasSize(2);
             assertThat(cart.total()).isEqualTo(800L);
         }
@@ -207,7 +202,7 @@ class ItemServiceImplTest {
         void test2() {
             when(cartItemRepository.findAll()).thenReturn(Flux.empty());
 
-            var cart = itemService.getCart().block();
+            var cart = itemService.getCart(id).block();
             assertThat(cart.items()).isEmpty();
             assertThat(cart.total()).isZero();
         }
@@ -228,7 +223,7 @@ class ItemServiceImplTest {
             when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.empty());
             when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(savedCartItem));
 
-            itemService.updateItemsCountInCart(itemId, CartAction.PLUS).block();
+            itemService.updateItemsCountInCart(userId, itemId, CartAction.PLUS).block();
 
             ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
             verify(cartItemRepository, times(1)).save(captor.capture());
@@ -244,7 +239,7 @@ class ItemServiceImplTest {
             when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.just(cartItem));
             when(cartItemRepository.save(any(CartItem.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-            itemService.updateItemsCountInCart(itemId, CartAction.MINUS).block();
+            itemService.updateItemsCountInCart(userId, itemId, CartAction.MINUS).block();
 
             ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
             verify(cartItemRepository, times(1)).save(captor.capture());
@@ -260,7 +255,7 @@ class ItemServiceImplTest {
             when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.just(cartItem));
             when(cartItemRepository.delete(cartItem)).thenReturn(Mono.empty());
 
-            itemService.updateItemsCountInCart(itemId, CartAction.MINUS).block();
+            itemService.updateItemsCountInCart(userId, itemId, CartAction.MINUS).block();
 
             verify(cartItemRepository, times(1)).delete(cartItem);
         }
@@ -274,7 +269,7 @@ class ItemServiceImplTest {
             when(cartItemRepository.findByItemId(itemId)).thenReturn(Mono.just(cartItem));
             when(cartItemRepository.delete(cartItem)).thenReturn(Mono.empty());
 
-            itemService.updateItemsCountInCart(itemId, CartAction.DELETE).block();
+            itemService.updateItemsCountInCart(userId, itemId, CartAction.DELETE).block();
 
             verify(cartItemRepository, times(1)).delete(cartItem);
         }
@@ -285,7 +280,7 @@ class ItemServiceImplTest {
             when(itemRepository.findById(1L)).thenReturn(Mono.empty());
 
             assertThatExceptionOfType(ItemNotFoundException.class)
-                    .isThrownBy(() -> itemService.updateItemsCountInCart(1L, CartAction.PLUS).block());
+                    .isThrownBy(() -> itemService.updateItemsCountInCart(userId, 1L, CartAction.PLUS).block());
         }
 
         @Test
@@ -294,7 +289,7 @@ class ItemServiceImplTest {
             when(cartItemRepository.findByItemId(1L)).thenReturn(Mono.empty());
 
             assertThatExceptionOfType(CartItemNotFoundException.class)
-                    .isThrownBy(() -> itemService.updateItemsCountInCart(1L, CartAction.DELETE).block());
+                    .isThrownBy(() -> itemService.updateItemsCountInCart(userId, 1L, CartAction.DELETE).block());
 
             verify(cartItemRepository, never()).delete(any());
         }

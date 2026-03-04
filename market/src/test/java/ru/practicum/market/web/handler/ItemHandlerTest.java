@@ -204,7 +204,7 @@ class ItemHandlerTest {
                     .thenReturn(action);
             when(binder.bindItemsQuery(any(ServerRequest.class)))
                     .thenReturn(new ItemsQuery(search, sort, pageNumber, pageSize));
-            when(itemService.updateItemsCountInCart(itemId, action))
+            when(itemService.updateItemsCountInCart(userId, itemId, action))
                     .thenReturn(Mono.empty());
 
             webTestClient.post()
@@ -235,7 +235,7 @@ class ItemHandlerTest {
             var pageNumber = 1;
             var pageSize = 5;
 
-            when(itemService.updateItemsCountInCart(itemId, action))
+            when(itemService.updateItemsCountInCart(userId, itemId, action))
                     .thenReturn(Mono.error(new CartItemNotFoundException(
                             itemId,
                             "Cart item with id = %d not found.".formatted(itemId)
@@ -284,7 +284,7 @@ class ItemHandlerTest {
                     .thenReturn(itemId);
             when(binder.bindParamAction(any(ServerRequest.class)))
                     .thenReturn(action);
-            when(itemService.updateItemsCountInCart(itemId, action))
+            when(itemService.updateItemsCountInCart(userId, itemId, action))
                     .thenReturn(Mono.empty());
             when(itemService.getItem(itemId))
                     .thenReturn(Mono.just(itemResponseDto));
@@ -309,7 +309,7 @@ class ItemHandlerTest {
             var itemId = 1L;
             var action = CartAction.PLUS;
 
-            when(itemService.updateItemsCountInCart(itemId, action))
+            when(itemService.updateItemsCountInCart(userId, itemId, action))
                     .thenReturn(Mono.error(new CartItemNotFoundException(
                             itemId,
                             "Cart item with id = %d not found.".formatted(itemId)

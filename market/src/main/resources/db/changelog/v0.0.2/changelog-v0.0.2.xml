@@ -8,5 +8,7 @@
     <include file="002-init-roles-schema.xml" relativeToChangelogFile="true"/>
     <include file="003-init-user-roles-shema.xml" relativeToChangelogFile="true"/>
     <include file="004-insert-test-users.xml" relativeToChangelogFile="true"/>
+    <include file="005-cart-items-add-column-user.xml" relativeToChangelogFile="true"/>
+    <include file="006-orders-add-column-user.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

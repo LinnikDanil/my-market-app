@@ -11,22 +11,25 @@ public interface OrderService {
     /**
      * Возвращает список всех заказов.
      *
+     * @param userId идентификатор пользователя
      * @return поток заказов
      */
-    Flux<OrderResponseDto> getOrders();
+    Flux<OrderResponseDto> getOrders(long userId);
 
     /**
      * Возвращает один заказ по идентификатору.
      *
-     * @param id идентификатор заказа
+     * @param userId
+     * @param orderId идентификатор заказа
      * @return DTO заказа
      */
-    Mono<OrderResponseDto> getOrder(long id);
+    Mono<OrderResponseDto> getOrder(long userId, long orderId);
 
     /**
      * Создает заказ из текущей корзины.
      *
+     * @param userId идентификатор пользователя
      * @return идентификатор созданного заказа
      */
-    Mono<Long> createOrder();
+    Mono<Long> createOrder(long userId);
 }

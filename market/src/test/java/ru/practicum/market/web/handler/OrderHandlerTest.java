@@ -27,9 +27,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @WebFluxTest
 @Import({OrderHandlerTest.TestRoutes.class, OrderHandler.class, RouteLoggingFilter.class, RouteExceptionFilter.class})
@@ -73,7 +71,7 @@ class OrderHandlerTest {
     void test1() {
         var orders = List.of(TestDataFactory.createOrderResponseDto(1L,
                 TestDataFactory.createItemResponseDtos(2), 400L));
-        when(orderService.getOrders()).thenReturn(Flux.fromIterable(orders));
+        when(orderService.getOrders(userId)).thenReturn(Flux.fromIterable(orders));
 
         webTestClient.get()
                 .uri("/orders")
@@ -83,7 +81,7 @@ class OrderHandlerTest {
                 .expectBody(String.class)
                 .value(html -> assertThat(html).contains("title1"));
 
-        verify(orderService, times(1)).getOrders();
+        verify(orderService, times(1)).getOrders(userId);
     }
 
     @Test
@@ -93,7 +91,7 @@ class OrderHandlerTest {
         var order = new OrderResponseDto(orderId, TestDataFactory.createItemResponseDtos(1), 200L);
         when(binder.bindPathVariableId(any())).thenReturn(orderId);
         when(binder.bindParamNewOrder(any())).thenReturn(true);
-        when(orderService.getOrder(orderId)).thenReturn(Mono.just(order));
+        when(orderService.getOrder(userId, orderId)).thenReturn(Mono.just(order));
 
         webTestClient.get()
                 .uri("/orders/{id}?newOrder=true", orderId)
@@ -103,7 +101,7 @@ class OrderHandlerTest {
                 .expectBody(String.class)
                 .value(html -> assertThat(html).contains("title1"));
 
-        verify(orderService, times(1)).getOrder(orderId);
+        verify(orderService, times(1)).getOrder(userId, orderId);
     }
 
     @Test

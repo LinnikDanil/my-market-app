@@ -42,25 +42,26 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Flux<OrderResponseDto> getOrders() {
+    public Flux<OrderResponseDto> getOrders(long userId) {
         log.debug("Request to fetch all orders");
-        return orderRepository.findAll()
+        return orderRepository.findByUserId(userId)
                 .collectList()
                 .flatMapMany(this::loadOrderResponses);
     }
 
     /**
-     * Возвращает один заказ по id вместе с его позициями и товарами.
+     * Возвращает один заказ по orderId вместе с его позициями и товарами.
      *
-     * @param id идентификатор заказа
+     * @param userId  идентификатор пользователя
+     * @param orderId идентификатор заказа
      */
     @Override
     @Transactional(readOnly = true)
-    public Mono<OrderResponseDto> getOrder(long id) {
-        log.debug("Request to fetch order with id={}", id);
+    public Mono<OrderResponseDto> getOrder(long userId, long orderId) {
+        log.debug("Request to fetch order with orderId={}", orderId);
 
-        return findOrderById(id)
-                .flatMap(order -> buildOrderResponse(order, id));
+        return findOrderById(userId, orderId)
+                .flatMap(order -> buildOrderResponse(order, orderId));
     }
 
     /**
@@ -69,11 +70,11 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
-    public Mono<Long> createOrder() {
+    public Mono<Long> createOrder(long userId) {
         log.debug("Creating order from cart items");
-        return cartItemRepository.findAll()
+        return cartItemRepository.findByUserId(userId)
                 .collectList()
-                .flatMap(this::createOrderFromCartItems);
+                .flatMap(cartItems -> createOrderFromCartItems(userId, cartItems));
     }
 
     /**
@@ -106,11 +107,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Ищет заказ по id или бросает {@link OrderNotFoundException}.
+     * Ищет заказ по orderId или бросает {@link OrderNotFoundException}.
      */
-    private Mono<Order> findOrderById(long id) {
-        return orderRepository.findById(id)
-                .switchIfEmpty(Mono.error(new OrderNotFoundException(id, "Order with id = %d not found.".formatted(id))));
+    private Mono<Order> findOrderById(long userId, long orderId) {
+        return orderRepository.findByUserIdAndId(userId, orderId)
+                .switchIfEmpty(Mono.error(
+                        new OrderNotFoundException(orderId, "Order with orderId = %d for user with id = %d not found."
+                                .formatted(orderId, userId)))
+                );
     }
 
     /**
@@ -130,7 +134,7 @@ public class OrderServiceImpl implements OrderService {
     /**
      * Проверяет, что корзина не пуста, и продолжает создание заказа.
      */
-    private Mono<Long> createOrderFromCartItems(List<CartItem> cartItems) {
+    private Mono<Long> createOrderFromCartItems(long userId, List<CartItem> cartItems) {
         if (cartItems.isEmpty()) {
             return Mono.error(new OrderConflictException("Order must contain at least one item."));
         }
@@ -138,14 +142,14 @@ public class OrderServiceImpl implements OrderService {
         var itemIds = cartItems.stream().map(CartItem::getItemId).toList();
         return itemRepository.findByIdIn(itemIds)
                 .collectList()
-                .flatMap(items -> placeOrder(cartItems, items));
+                .flatMap(items -> placeOrder(userId, cartItems, items));
     }
 
     /**
      * Создает заказ из корзины и запрашивает hold в платежном сервисе.
      */
-    private Mono<Long> placeOrder(List<CartItem> cartItems, List<Item> items) {
-        var order = OrderMapper.toOrder(cartItems, items);
+    private Mono<Long> placeOrder(long userId, List<CartItem> cartItems, List<Item> items) {
+        var order = OrderMapper.toOrder(userId, cartItems, items);
         var holdRq = new HoldRq(BigDecimal.valueOf(order.getTotalSum()));
 
         return paymentAdapter.hold(holdRq)
@@ -182,7 +186,7 @@ public class OrderServiceImpl implements OrderService {
 
         return orderItemRepository.saveAll(orderItems)
                 .doOnComplete(() -> log.debug("Saved {} order items for order {}", orderItems.size(), orderId))
-                .then(cartItemRepository.deleteAll()
+                .then(cartItemRepository.deleteByIdIn(cartItems.stream().map(CartItem::getId).toList())
                         .doOnSuccess(v -> log.debug("Cart items cleared after order creation"))
                 )
                 .then(paymentAdapter.confirm(paymentId)

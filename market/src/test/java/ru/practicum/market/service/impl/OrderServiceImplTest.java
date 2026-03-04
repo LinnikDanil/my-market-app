@@ -28,13 +28,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrderServiceImpl")
@@ -73,7 +68,7 @@ class OrderServiceImplTest {
             when(orderItemRepository.findByOrderIdIn(List.of(1L))).thenReturn(Flux.fromIterable(orderItems));
             when(itemRepository.findByIdIn(List.of(items.get(0).getId()))).thenReturn(Flux.fromIterable(items));
 
-            var result = orderService.getOrders().collectList().block();
+            var result = orderService.getOrders(userId).collectList().block();
             assertThat(result).hasSize(1);
             var response = result.getFirst();
             assertThat(response.id()).isEqualTo(1L);
@@ -100,7 +95,7 @@ class OrderServiceImplTest {
             when(itemRepository.findByIdIn(List.of(items.getFirst().getId())))
                     .thenReturn(Flux.fromIterable(items));
 
-            var response = orderService.getOrder(order.getId()).block();
+            var response = orderService.getOrder(userId, order.getId()).block();
             assertThat(response.id()).isEqualTo(order.getId());
             assertThat(response.totalSum()).isEqualTo(order.getTotalSum());
             assertThat(response.items()).hasSize(1);
@@ -114,7 +109,7 @@ class OrderServiceImplTest {
             when(orderRepository.findById(orderId)).thenReturn(Mono.empty());
 
             assertThatExceptionOfType(OrderNotFoundException.class)
-                    .isThrownBy(() -> orderService.getOrder(orderId).block());
+                    .isThrownBy(() -> orderService.getOrder(userId, orderId).block());
 
             verify(orderItemRepository, never()).findByOrderId(anyLong());
         }
@@ -133,7 +128,7 @@ class OrderServiceImplTest {
                     TestDataFactory.createCartItem(items.get(1).getId(), 1)
             );
             var totalSum = 400L;
-            var order = new Order(totalSum);
+            var order = new Order(userId, totalSum);
             order.setId(5L);
             var orderItems = List.of(
                     new OrderItem(order.getId(), items.get(0).getId(), 2, items.get(0).getPrice()),

@@ -1,11 +1,6 @@
 package ru.practicum.market.domain.model;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -27,7 +22,11 @@ public class Order extends BaseEntity {
     @Column("created_at")
     LocalDateTime createdAt;
 
-    public Order(long totalSum) {
+    @Column("user_id")
+    long userId;
+
+    public Order(long userId, long totalSum) {
+        this.userId = userId;
         this.totalSum = totalSum;
     }
 }

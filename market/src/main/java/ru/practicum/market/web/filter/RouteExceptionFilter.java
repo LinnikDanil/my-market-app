@@ -18,6 +18,7 @@ import ru.practicum.market.integration.exception.PaymentBalanceException;
 import ru.practicum.market.integration.exception.PaymentIdNotFoundException;
 import ru.practicum.market.integration.exception.PaymentServiceUnavailableException;
 import ru.practicum.market.service.ItemService;
+import ru.practicum.market.service.security.CurrentUserService;
 
 import java.util.Map;
 
@@ -27,6 +28,7 @@ import java.util.Map;
 public class RouteExceptionFilter {
 
     private final ItemService itemService;
+    private final CurrentUserService userService;
 
     /**
      * Возвращает общий фильтр обработки исключений для functional routes.
@@ -71,7 +73,8 @@ public class RouteExceptionFilter {
     private Mono<ServerResponse> insufficientFunds(PaymentBalanceException e, ServerRequest request) {
         logException(e);
 
-        return itemService.getCartWithoutPayments()
+        return userService.currentUserId(request)
+                .flatMap(itemService::getCartWithoutPayments)
                 .flatMap(cart -> ServerResponse
                         .status(HttpStatus.CONFLICT)
                         .render("cart", Map.of(
@@ -87,7 +90,8 @@ public class RouteExceptionFilter {
     private Mono<ServerResponse> paymentServiceUnavailable(RuntimeException e, ServerRequest request) {
         logException(e);
 
-        return itemService.getCartWithoutPayments()
+        return userService.currentUserId(request)
+                .flatMap(itemService::getCartWithoutPayments)
                 .flatMap(cart -> ServerResponse
                         .status(HttpStatus.SERVICE_UNAVAILABLE)
                         .render("cart", Map.of(

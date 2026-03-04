@@ -1,0 +1,66 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="add_column_user_id_to_cart_items" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <columnExists tableName="cart_items" columnName="user_id"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="cart_items">
+            <column name="user_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="cart_items" columnName="user_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create_cart_items_foreign_key_users" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_cart_items_users"/>
+            </not>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="cart_items"
+                                 baseColumnNames="user_id"
+                                 constraintName="fk_cart_items_users"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="cart_items" constraintName="fk_cart_items_users"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="cart_items-replace-unique" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <uniqueConstraintExists tableName="cart_items" constraintName="cart_items_item_id_key"/>
+            <not>
+                <uniqueConstraintExists tableName="cart_items" constraintName="uk_cart_items_user_item"/>
+            </not>
+        </preConditions>
+
+        <dropUniqueConstraint tableName="cart_items" constraintName="cart_items_item_id_key"/>
+
+        <addUniqueConstraint tableName="cart_items"
+                             columnNames="user_id, item_id"
+                             constraintName="uk_cart_items_user_item"/>
+
+        <rollback>
+            <dropUniqueConstraint tableName="cart_items" constraintName="uk_cart_items_user_item"/>
+            <addUniqueConstraint tableName="cart_items"
+                                 columnNames="item_id"
+                                 constraintName="cart_items_item_id_key"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

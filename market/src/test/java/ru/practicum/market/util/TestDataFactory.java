@@ -55,13 +55,13 @@ public class TestDataFactory {
     }
 
     public static Order createOrder(Long id, long totalSum) {
-        var order = new Order(totalSum);
+        var order = new Order(userId, totalSum);
         order.setId(id);
         return order;
     }
 
     public static Order createOrder(long totalSum) {
-        return new Order(totalSum);
+        return new Order(userId, totalSum);
     }
 
     public static OrderResponseDto createOrderResponseDto(Long id, List<ItemResponseDto> items, long total) {

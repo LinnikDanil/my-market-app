@@ -43,14 +43,14 @@ public class OrderMapper {
     /**
      * Создает доменный заказ из корзины с вычислением общей суммы.
      */
-    public static Order toOrder(List<CartItem> cartItems, List<Item> items) {
+    public static Order toOrder(long userId, List<CartItem> cartItems, List<Item> items) {
         var itemsById = groupItemsById(items);
 
         var totalSum = cartItems.stream()
                 .map(i -> i.getQuantity() * itemsById.get(i.getItemId()).getPrice())
                 .reduce(0L, Long::sum);
 
-        return new Order(totalSum);
+        return new Order(userId, totalSum);
     }
 
     /**

@@ -5,7 +5,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,6 +16,7 @@ import ru.practicum.market.repository.AppRoleRepository;
 import ru.practicum.market.repository.AppUserRepository;
 import ru.practicum.market.repository.AppUserRoleRepository;
 import ru.practicum.market.service.cache.AppRoleCacheService;
+import ru.practicum.market.service.security.model.AppPrincipal;
 import ru.practicum.market.web.dto.AppUserRequestDto;
 
 @Service
@@ -44,10 +44,7 @@ public class RepositoryUserDetailsService implements ReactiveUserDetailsService 
                         .map(role -> new SimpleGrantedAuthority(role.getName()))
                         .collectList()
                         .map(roles ->
-                                User.withUsername(appUser.getUsername())
-                                        .password(appUser.getPassword())
-                                        .authorities(roles)
-                                        .build()
+                                new AppPrincipal(appUser.getId(), appUser.getUsername(), appUser.getPassword(), roles)
                         ));
     }
 

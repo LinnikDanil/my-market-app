@@ -25,9 +25,7 @@ import ru.practicum.market.web.filter.RouteLoggingFilter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @WebFluxTest
 @Import({CartHandlerTest.TestRoutes.class, CartHandler.class, RouteLoggingFilter.class, RouteExceptionFilter.class})
@@ -67,7 +65,7 @@ class CartHandlerTest {
     void test1() {
         var items = TestDataFactory.createItemResponseDtos(2);
         var cart = new CartResponseDto(items, 500L, true);
-        when(itemService.getCart()).thenReturn(Mono.just(cart));
+        when(itemService.getCart(id)).thenReturn(Mono.just(cart));
 
         webTestClient.get()
                 .uri("/cart/items")
@@ -87,8 +85,8 @@ class CartHandlerTest {
         var cart = new CartResponseDto(items, 800L, true);
         when(binder.bindParamId(any())).thenReturn(id);
         when(binder.bindParamAction(any())).thenReturn(action);
-        when(itemService.updateItemsCountInCart(id, action)).thenReturn(Mono.empty());
-        when(itemService.getCart()).thenReturn(Mono.just(cart));
+        when(itemService.updateItemsCountInCart(userId, id, action)).thenReturn(Mono.empty());
+        when(itemService.getCart(id)).thenReturn(Mono.just(cart));
 
         webTestClient.post()
                 .uri("/cart/items")
@@ -98,7 +96,7 @@ class CartHandlerTest {
                 .expectBody(String.class)
                 .value(html -> assertThat(html).contains("title1"));
 
-        verify(itemService, times(1)).updateItemsCountInCart(anyLong(), any());
-        verify(itemService, times(1)).getCart();
+        verify(itemService, times(1)).updateItemsCountInCart(userId, anyLong(), any());
+        verify(itemService, times(1)).getCart(id);
     }
 }

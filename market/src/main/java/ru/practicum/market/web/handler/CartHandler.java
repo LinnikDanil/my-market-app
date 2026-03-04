@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.service.ItemService;
+import ru.practicum.market.service.security.CurrentUserService;
 import ru.practicum.market.web.bind.QueryBinder;
 import ru.practicum.market.web.view.PageRenderHelper;
 
@@ -19,18 +20,22 @@ public class CartHandler {
     private final ItemService itemService;
     private final QueryBinder binder;
     private final PageRenderHelper pageRenderHelper;
+    private final CurrentUserService userService;
 
     /**
      * Отображает страницу корзины.
      */
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Mono<ServerResponse> getCart(ServerRequest request) {
-        return itemService.getCart()
+        return userService.currentUserId(request)
+                .flatMap(itemService::getCart)
                 .flatMap(cart -> pageRenderHelper.ok(request, "cart", Map.of(
-                        "items", cart.items(),
-                        "total", cart.total(),
-                        "isActive", cart.isActiveButton()
-                )));
+                                "items", cart.items(),
+                                "total", cart.total(),
+                                "isActive", cart.isActiveButton()
+                        ))
+                );
+
     }
 
     /**
@@ -38,10 +43,11 @@ public class CartHandler {
      */
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Mono<ServerResponse> updateItemsCountInCart(ServerRequest request) {
-        var id = binder.bindParamId(request);
+        var itemId = binder.bindParamId(request);
         var action = binder.bindParamAction(request);
 
-        return itemService.updateItemsCountInCart(id, action)
+        return userService.currentUserId(request)
+                .flatMap(userId -> itemService.updateItemsCountInCart(userId, itemId, action))
                 .then(getCart(request));
     }
 }
