@@ -107,12 +107,12 @@ public class ItemServiceImpl implements ItemService {
 
 
                     var cartCacheMono = itemCacheService.getItemsByIds(itemIds);
-                    var currentBalanceMono = paymentAdapter.getBalance();
+                    var currentBalanceMono = paymentAdapter.getBalance(userId);
 
                     return Mono.zip(cartCacheMono, currentBalanceMono)
                             .map(t -> {
                                 var cartCache = t.getT1();
-                                var currentBalance = t.getT2().balance();
+                                var currentBalance = t.getT2().getBalance();
                                 return ItemMapper.toCart(cartItems, cartCache.items(), currentBalance);
                             });
                 });

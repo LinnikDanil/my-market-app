@@ -20,6 +20,8 @@ import ru.practicum.market.integration.exception.PaymentServiceUnavailableExcept
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.service.security.CurrentUserService;
 
+import java.security.Principal;
+import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -64,7 +66,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> paymentNofFound(RuntimeException e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).render("errors/payment-not-found");
+        return render(request, HttpStatus.SERVICE_UNAVAILABLE, "errors/payment-not-found", Map.of());
     }
 
     /**
@@ -75,9 +77,7 @@ public class RouteExceptionFilter {
 
         return userService.currentUserId(request)
                 .flatMap(itemService::getCartWithoutPayments)
-                .flatMap(cart -> ServerResponse
-                        .status(HttpStatus.CONFLICT)
-                        .render("cart", Map.of(
+                .flatMap(cart -> render(request, HttpStatus.CONFLICT, "cart", Map.of(
                                 "items", cart.items(),
                                 "total", cart.total(),
                                 "isActive", false
@@ -92,9 +92,7 @@ public class RouteExceptionFilter {
 
         return userService.currentUserId(request)
                 .flatMap(itemService::getCartWithoutPayments)
-                .flatMap(cart -> ServerResponse
-                        .status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .render("cart", Map.of(
+                .flatMap(cart -> render(request, HttpStatus.SERVICE_UNAVAILABLE, "cart", Map.of(
                                 "items", cart.items(),
                                 "total", cart.total(),
                                 "isActive", false,
@@ -107,7 +105,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> oops(Exception e, ServerRequest request) {
         log.error("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
-        return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).render("errors/oops");
+        return render(request, HttpStatus.INTERNAL_SERVER_ERROR, "errors/oops", Map.of());
     }
 
     /**
@@ -115,7 +113,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> badRequest(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.BAD_REQUEST).render("errors/bad-request");
+        return render(request, HttpStatus.BAD_REQUEST, "errors/bad-request", Map.of());
     }
 
     /**
@@ -123,17 +121,17 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> adminBadRequest(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.BAD_REQUEST).render("errors/admin-error");
+        return render(request, HttpStatus.BAD_REQUEST, "errors/admin-error", Map.of());
     }
 
     private Mono<ServerResponse> userAlreadyExists(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.CONFLICT).render("errors/user-exists");
+        return render(request, HttpStatus.CONFLICT, "errors/user-exists", Map.of());
     }
 
     private Mono<ServerResponse> accessDenied(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.FORBIDDEN).render("errors/access-denied");
+        return render(request, HttpStatus.FORBIDDEN, "errors/access-denied", Map.of());
     }
 
     /**
@@ -141,8 +139,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> notFound(NotFoundExceptionAbstract e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.NOT_FOUND)
-                .render("errors/not-found", Map.of("id", String.valueOf(e.getId())));
+        return render(request, HttpStatus.NOT_FOUND, "errors/not-found", Map.of("id", String.valueOf(e.getId())));
     }
 
     /**
@@ -150,7 +147,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> conflict(Exception e, ServerRequest request) {
         logException(e);
-        return ServerResponse.status(HttpStatus.CONFLICT).render("errors/conflict");
+        return render(request, HttpStatus.CONFLICT, "errors/conflict", Map.of());
     }
 
     /**
@@ -158,6 +155,24 @@ public class RouteExceptionFilter {
      */
     private void logException(Exception e) {
         log.warn("Handled exception of type {}: {}", e.getClass().getSimpleName(), e.getMessage());
+    }
+
+    /**
+     * Рендерит страницу и гарантированно добавляет флаг authenticated в модель.
+     */
+    private Mono<ServerResponse> render(ServerRequest request,
+                                        HttpStatus status,
+                                        String view,
+                                        Map<String, Object> model) {
+        return request.principal()
+                .map(Principal::getName)
+                .map(name -> !"anonymousUser".equalsIgnoreCase(name))
+                .defaultIfEmpty(false)
+                .flatMap(authenticated -> {
+                    Map<String, Object> enrichedModel = new HashMap<>(model);
+                    enrichedModel.putIfAbsent("authenticated", authenticated);
+                    return ServerResponse.status(status).render(view, enrichedModel);
+                });
     }
 
 }

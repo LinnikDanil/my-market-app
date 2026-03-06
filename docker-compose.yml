@@ -35,7 +35,7 @@ services:
     environment:
       - SERVER_PORT=${MARKET_SERVER_PORT}
     ports:
-      - "8080:8080"
+      - "8081:8081"
     volumes:
       - ./images:/market-app/images
     depends_on:
@@ -55,7 +55,21 @@ services:
     environment:
       - SERVER_PORT=${PAYMENTS_SERVER_PORT}
     ports:
-      - "8081:8081"
+      - "8082:8082"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   db-data:

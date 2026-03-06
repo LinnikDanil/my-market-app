@@ -1,9 +1,9 @@
 package ru.practicum.market.integration;
 
 import reactor.core.publisher.Mono;
-import ru.practicum.market.integration.dto.Balance;
-import ru.practicum.market.integration.dto.HoldRq;
-import ru.practicum.market.integration.dto.HoldRs;
+import ru.practicum.payments.integration.domain.Balance;
+import ru.practicum.payments.integration.domain.HoldRq;
+import ru.practicum.payments.integration.domain.HoldRs;
 
 import java.util.UUID;
 
@@ -17,7 +17,7 @@ public interface PaymentAdapter {
      *
      * @return DTO баланса
      */
-    Mono<Balance> getBalance();
+    Mono<Balance> getBalance(long userId);
 
     /**
      * Резервирует сумму (hold) под будущую оплату.
@@ -25,7 +25,7 @@ public interface PaymentAdapter {
      * @param holdRq параметры резерва
      * @return идентификатор резерва
      */
-    Mono<HoldRs> hold(HoldRq holdRq);
+    Mono<HoldRs> hold(long userId, HoldRq holdRq);
 
     /**
      * Подтверждает ранее созданный резерв.

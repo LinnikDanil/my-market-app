@@ -31,3 +31,23 @@ tasks.register('integrationTest', Test) {
     systemProperty 'spring.profiles.active', 'test'
     shouldRunAfter tasks.test
 }
+
+sourceSets.main.java.srcDir "$projectDir/build/generated/src/main/java"
+
+openApiGenerate {
+    generatorName.set("java")
+    inputSpec.set("$projectDir/src/main/resources/api-spec.yaml")
+    outputDir.set("$projectDir/build/generated")
+
+    modelPackage.set("ru.practicum.payments.integration.domain")
+    apiPackage.set("ru.practicum.payments.api")
+    invokerPackage.set("ru.practicum.payments.integration.client")
+
+    configOptions.set([
+            library        : "webclient",
+            useJakartaEe   : "true",
+            openApiNullable: "false"
+    ])
+}
+
+compileJava.dependsOn tasks.openApiGenerate

@@ -4,7 +4,11 @@ server:
 spring:
   application:
     name: payments
-
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
   webflux:
     multipart:
       max-in-memory-size: ${SPRING_WEBFLUX_MULTIPART_MAX_IN_MEMORY_SIZE}

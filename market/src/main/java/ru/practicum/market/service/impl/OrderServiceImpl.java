@@ -13,7 +13,6 @@ import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.domain.model.Order;
 import ru.practicum.market.domain.model.OrderItem;
 import ru.practicum.market.integration.PaymentAdapter;
-import ru.practicum.market.integration.dto.HoldRq;
 import ru.practicum.market.repository.CartItemRepository;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.repository.OrderItemRepository;
@@ -21,6 +20,7 @@ import ru.practicum.market.repository.OrderRepository;
 import ru.practicum.market.service.OrderService;
 import ru.practicum.market.web.dto.OrderResponseDto;
 import ru.practicum.market.web.mapper.OrderMapper;
+import ru.practicum.payments.integration.domain.HoldRq;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -150,11 +150,11 @@ public class OrderServiceImpl implements OrderService {
      */
     private Mono<Long> placeOrder(long userId, List<CartItem> cartItems, List<Item> items) {
         var order = OrderMapper.toOrder(userId, cartItems, items);
-        var holdRq = new HoldRq(BigDecimal.valueOf(order.getTotalSum()));
+        var holdRq = new HoldRq().amount(BigDecimal.valueOf(order.getTotalSum()));
 
-        return paymentAdapter.hold(holdRq)
+        return paymentAdapter.hold(userId, holdRq)
                 .onErrorResume(Mono::error)
-                .flatMap(holdRs -> saveOrderAndConfirmPayment(order, cartItems, items, holdRs.paymentId()));
+                .flatMap(holdRs -> saveOrderAndConfirmPayment(order, cartItems, items, holdRs.getPaymentId()));
     }
 
     /**

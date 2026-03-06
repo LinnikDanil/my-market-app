@@ -19,6 +19,8 @@ import org.springframework.security.web.server.csrf.WebSessionServerCsrfTokenRep
 
 import java.net.URI;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
@@ -62,9 +64,9 @@ public class SecurityConfig {
                             exchange.getResponse().getHeaders().setLocation(URI.create("/access-denied"));
                             return exchange.getResponse().setComplete();
                         })
-                );
-        // OAuth2 Client для WebClient
-//            .oauth2Client(withDefaults());
+                )
+                // OAuth2 Client для WebClient
+                .oauth2Client(withDefaults());
 
         return http.build();
     }

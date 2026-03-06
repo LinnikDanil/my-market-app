@@ -1,4 +1,4 @@
-package ru.practicum.market.integration.config;
+package ru.practicum.market.config;
 
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
@@ -10,17 +10,25 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProviderBuilder;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultReactiveOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
+import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
+import ru.practicum.payments.api.DefaultApi;
+import ru.practicum.payments.integration.client.ApiClient;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Slf4j
-public class WebClientConfiguration {
+public class WebClientConfig {
 
     /**
      * Создает WebClient для интеграции с сервисом платежей.
@@ -35,7 +43,9 @@ public class WebClientConfiguration {
             @Value("${integration.payments.web-client.timeouts.connect-timeout-millis}") int connectTimeoutMillis,
             @Value("${integration.payments.web-client.timeouts.response-timeout}") Duration responseTimeout,
             @Value("${integration.payments.web-client.timeouts.read-timeout}") Duration readTimeout,
-            @Value("${integration.payments.web-client.timeouts.write-timeout}") Duration writeTimeout) {
+            @Value("${integration.payments.web-client.timeouts.write-timeout}") Duration writeTimeout,
+            ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+
         ConnectionProvider provider = ConnectionProvider.builder(poolName)
                 .maxConnections(maxConnections)
                 .pendingAcquireTimeout(pendingAcquireTimeout)
@@ -52,6 +62,12 @@ public class WebClientConfiguration {
                         .addHandlerLast(new ReadTimeoutHandler(readTimeout.toMillis(), TimeUnit.MILLISECONDS))
                         .addHandlerLast(new WriteTimeoutHandler(writeTimeout.toMillis(), TimeUnit.MILLISECONDS)));
 
+        // Создаём функцию-фильтр для WebClient, которая будет автоматически
+        // запрашивать и прикреплять OAuth2-токены к каждому HTTP-запросу
+        var oauth2Client = new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
+        // Указываем ID регистрации OAuth2-клиента по умолчанию (должен совпадать с именем в application.yml)
+        oauth2Client.setDefaultClientRegistrationId("keycloak");
+
         return WebClient.builder()
                 .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
@@ -59,7 +75,35 @@ public class WebClientConfiguration {
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .filter(logRequest())
                 .filter(logResponse())
+                .filter(oauth2Client) // добавляем OAuth2-авторизацию ко всем запросам
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
                 .build();
+    }
+
+    @Bean
+    public DefaultApi paymentsApi(
+            @Value("${integration.payments.baseUrl}") String baseUrl,
+            WebClient paymentsWebClient) {
+        var apiClient = new ApiClient(paymentsWebClient).setBasePath(baseUrl);
+        return new DefaultApi(apiClient);
+    }
+
+    @Bean
+    public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
+            ReactiveClientRegistrationRepository clientRegistrations,
+            ServerOAuth2AuthorizedClientRepository authorizedClients) {
+        // Создаём провайдера OAuth2-авторизованных клиентов, поддерживающего только flow client credentials
+        var authorizedClientProvider = ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
+                .clientCredentials()
+                .build();
+        // Создаём стандартный менеджер, который будет использовать переданные репозитории
+        var authorizedClientManager = new DefaultReactiveOAuth2AuthorizedClientManager(
+                // откуда брать настройки провайдера (client ID, secret, URL и т.д.)
+                clientRegistrations,
+                // куда кэшировать токены (в WebSession по умолчанию)
+                authorizedClients);
+        authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+        return authorizedClientManager;
     }
 
     /**
