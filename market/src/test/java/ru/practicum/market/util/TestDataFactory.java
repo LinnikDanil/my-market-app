@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TestDataFactory {
+    public static final long USER_ID = 1L;
 
     public static List<Item> createItems(int size) {
         var items = new ArrayList<Item>();
@@ -48,20 +49,25 @@ public class TestDataFactory {
     }
 
     public static CartItem createCartItem(long itemId, int quantity) {
+        return createCartItem(USER_ID, itemId, quantity);
+    }
+
+    public static CartItem createCartItem(long userId, long itemId, int quantity) {
         var cartItem = new CartItem();
+        cartItem.setUserId(userId);
         cartItem.setItemId(itemId);
         cartItem.setQuantity(quantity);
         return cartItem;
     }
 
     public static Order createOrder(Long id, long totalSum) {
-        var order = new Order(totalSum);
+        var order = new Order(USER_ID, totalSum);
         order.setId(id);
         return order;
     }
 
     public static Order createOrder(long totalSum) {
-        return new Order(totalSum);
+        return new Order(USER_ID, totalSum);
     }
 
     public static OrderResponseDto createOrderResponseDto(Long id, List<ItemResponseDto> items, long total) {

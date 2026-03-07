@@ -36,6 +36,8 @@ public class AdminServiceImpl implements AdminService {
 
     @Value("${image.path}")
     private String imagePath;
+    @Value("${image.public-uri-prefix}")
+    private String imagePublicUriPrefix;
 
     /**
      * Загружает Excel-файл с товарами и сохраняет их в базе реактивно.
@@ -100,7 +102,7 @@ public class AdminServiceImpl implements AdminService {
                                     .thenReturn(destination))
                             .flatMap(destination -> {
                                 // Сохраняем относительный путь изображения в товаре.
-                                item.setImgPath("/images/" + destination.safeFileName());
+                                item.setImgPath(imagePublicUriPrefix + destination.safeFileName());
                                 return itemRepository.save(item)
                                         .thenReturn(destination);
                             })
@@ -124,6 +126,9 @@ public class AdminServiceImpl implements AdminService {
                 .doOnComplete(() -> log.debug("Fetched all items for admin"));
     }
 
+    /**
+     * Гарантирует существование директории для загрузки изображений.
+     */
     private Mono<Path> ensureUploadPath() {
         return Mono.fromCallable(() -> {
                     // Создание директории — потенциально блокирующая операция.
@@ -137,6 +142,9 @@ public class AdminServiceImpl implements AdminService {
                         new ItemImageBadRequest("Failed to create upload directory!", exception));
     }
 
+    /**
+     * Формирует безопасный путь назначения для изображения.
+     */
     private ImageDestination buildDestination(Path uploadPath, String originalFilename) {
         var sanitizedName = StringUtils.hasText(originalFilename)
                 // Нормализуем имя файла, отбрасывая пути.

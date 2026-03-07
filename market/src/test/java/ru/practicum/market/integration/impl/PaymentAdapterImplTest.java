@@ -1,5 +1,6 @@
 package ru.practicum.market.integration.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,12 +13,14 @@ import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.practicum.market.integration.dto.Balance;
-import ru.practicum.market.integration.dto.HoldRq;
-import ru.practicum.market.integration.dto.HoldRs;
 import ru.practicum.market.integration.exception.PaymentBalanceException;
 import ru.practicum.market.integration.exception.PaymentIdNotFoundException;
 import ru.practicum.market.integration.exception.PaymentServiceUnavailableException;
+import ru.practicum.payments.api.DefaultApi;
+import ru.practicum.payments.integration.client.ApiClient;
+import ru.practicum.payments.integration.domain.Balance;
+import ru.practicum.payments.integration.domain.HoldRq;
+import ru.practicum.payments.integration.domain.HoldRs;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -40,9 +43,9 @@ class PaymentAdapterImplTest {
         void test1() {
             var adapter = buildAdapter(responseWithBody(HttpStatus.OK, balanceJson(BigDecimal.valueOf(1200))));
 
-            var balance = adapter.getBalance().block();
+            var balance = adapter.getBalance(1L).block();
 
-            assertThat(balance).isEqualTo(new Balance(BigDecimal.valueOf(1200)));
+            assertThat(balance).isEqualTo(new Balance().balance(BigDecimal.valueOf(1200)));
         }
 
         @Test
@@ -51,7 +54,7 @@ class PaymentAdapterImplTest {
             var adapter = buildAdapter(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).build());
 
             assertThatExceptionOfType(PaymentServiceUnavailableException.class)
-                    .isThrownBy(() -> adapter.getBalance().block())
+                    .isThrownBy(() -> adapter.getBalance(1L).block())
                     .withMessage("Payment service error");
         }
     }
@@ -66,9 +69,9 @@ class PaymentAdapterImplTest {
             var paymentId = UUID.randomUUID();
             var adapter = buildAdapter(responseWithBody(HttpStatus.OK, holdResponseJson(paymentId)));
 
-            var response = adapter.hold(new HoldRq(BigDecimal.valueOf(400))).block();
+            var response = adapter.hold(1L, new HoldRq().amount(BigDecimal.valueOf(400))).block();
 
-            assertThat(response).isEqualTo(new HoldRs(paymentId));
+            assertThat(response).isEqualTo(new HoldRs().paymentId(paymentId));
         }
 
         @Test
@@ -80,7 +83,7 @@ class PaymentAdapterImplTest {
             ));
 
             assertThatExceptionOfType(PaymentBalanceException.class)
-                    .isThrownBy(() -> adapter.hold(new HoldRq(BigDecimal.valueOf(400))).block())
+                    .isThrownBy(() -> adapter.hold(1L, new HoldRq().amount(BigDecimal.valueOf(400))).block())
                     .withMessage("Insufficient balance");
         }
 
@@ -90,7 +93,7 @@ class PaymentAdapterImplTest {
             var adapter = buildAdapter(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).build());
 
             assertThatExceptionOfType(PaymentServiceUnavailableException.class)
-                    .isThrownBy(() -> adapter.hold(new HoldRq(BigDecimal.valueOf(400))).block())
+                    .isThrownBy(() -> adapter.hold(1L, new HoldRq().amount(BigDecimal.valueOf(400))).block())
                     .withMessage("Payment service error");
         }
     }
@@ -171,7 +174,9 @@ class PaymentAdapterImplTest {
 
     private PaymentAdapterImpl buildAdapter(ClientResponse response) {
         ExchangeFunction exchangeFunction = request -> Mono.just(response);
-        return new PaymentAdapterImpl(WebClient.builder().exchangeFunction(exchangeFunction).build());
+        var apiClient = new ApiClient(WebClient.builder().exchangeFunction(exchangeFunction).build())
+                .setBasePath("http://localhost");
+        return new PaymentAdapterImpl(new DefaultApi(apiClient), new ObjectMapper());
     }
 
     private ClientResponse responseWithBody(HttpStatus status, String body) {

@@ -27,6 +27,9 @@ public class ItemCacheServiceImpl implements ItemCacheService {
 
     private final ItemRepository itemRepository;
 
+    /**
+     * Возвращает товар по id и кэширует результат.
+     */
     @Cacheable(value = "item", key = "#id")
     @Transactional(readOnly = true)
     @Override
@@ -37,6 +40,9 @@ public class ItemCacheServiceImpl implements ItemCacheService {
                 .map(ItemMapper::toItemCacheDto);
     }
 
+    /**
+     * Возвращает страницу товаров с учетом поиска и кэширует результат.
+     */
     @Cacheable(
             value = "items-page",
             key = "T(ru.practicum.market.service.cache.util.KeyGenerator).generateKeyForItemsPage(#search, #pageable)"
@@ -63,6 +69,9 @@ public class ItemCacheServiceImpl implements ItemCacheService {
                 .map(t -> ItemMapper.toItemsPage(t.getT1(), t.getT2()));
     }
 
+    /**
+     * Возвращает данные товаров для корзины и кэширует их по списку id.
+     */
     @Cacheable(
             value = "cart",
             key = "T(ru.practicum.market.service.cache.util.KeyGenerator).generateKeyForCart(#itemIds)"

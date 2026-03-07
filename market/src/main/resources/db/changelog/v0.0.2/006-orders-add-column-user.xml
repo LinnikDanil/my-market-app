@@ -1,0 +1,44 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="add_column_user_id_to_orders" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <columnExists tableName="orders" columnName="user_id"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="orders">
+            <column name="user_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="orders" columnName="user_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create_orders_foreign_key_users" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_orders_users"/>
+            </not>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="orders"
+                                 baseColumnNames="user_id"
+                                 constraintName="fk_orders_users"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="orders" constraintName="fk_orders_users"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

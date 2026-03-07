@@ -8,15 +8,50 @@ import ru.practicum.payments.domain.Payment;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * Сервис бизнес-операций платежного модуля.
+ */
 public interface PaymentService {
 
-    Mono<BigDecimal> getBalance();
+    /**
+     * Возвращает текущий доступный баланс.
+     *
+     * @param userId идентификатор пользователя
+     * @return сумма баланса
+     */
+    Mono<BigDecimal> getBalance(Long userId);
 
-    Mono<Void> replenishBalance(Mono<Payment> payment);
+    /**
+     * Пополняет баланс на указанную сумму.
+     *
+     * @param userId  идентификатор пользователя
+     * @param payment запрос с суммой пополнения
+     * @return сигнал завершения
+     */
+    Mono<Void> replenishBalance(Long userId, Mono<Payment> payment);
 
-    Mono<HoldRs> holdPayment(Mono<HoldRq> payment);
+    /**
+     * Резервирует сумму на оплату.
+     *
+     * @param userId  идентификатор пользователя
+     * @param payment запрос hold
+     * @return результат hold с идентификатором
+     */
+    Mono<HoldRs> holdPayment(Long userId, Mono<HoldRq> payment);
 
+    /**
+     * Подтверждает ранее созданный hold.
+     *
+     * @param paymentId идентификатор hold-операции
+     * @return сигнал завершения
+     */
     Mono<Void> confirmPayment(UUID paymentId);
 
+    /**
+     * Отменяет ранее созданный hold и возвращает сумму на баланс.
+     *
+     * @param paymentId идентификатор hold-операции
+     * @return сигнал завершения
+     */
     Mono<Void> cancelPayment(UUID paymentId);
 }

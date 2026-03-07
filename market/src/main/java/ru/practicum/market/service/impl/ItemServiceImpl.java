@@ -30,7 +30,9 @@ import ru.practicum.market.web.mapper.ItemMapper;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static ru.practicum.market.web.dto.enums.SortMethod.ALPHA;
 import static ru.practicum.market.web.dto.enums.SortMethod.PRICE;
@@ -47,66 +49,55 @@ public class ItemServiceImpl implements ItemService {
     private final CartItemRepository cartItemRepository;
     private final PaymentAdapter paymentAdapter;
 
+    /**
+     * Возвращает страницу товаров с учетом поиска, сортировки и количества в корзине.
+     */
     @Override
     @Transactional(readOnly = true)
-    public Mono<ItemsResponseDto> getItems(String search, SortMethod sortMethod, int pageNumber, int pageSize) {
+    public Mono<ItemsResponseDto> getItems(Optional<Long> userIdOpt, String search, SortMethod sortMethod, int pageNumber, int pageSize) {
 
         log.debug("Request to fetch items with search='{}', sortMethod={}, pageNumber={}, pageSize={}",
                 search, sortMethod, pageNumber, pageSize);
 
-        var sort = switch (sortMethod) {
-            case NO -> Sort.unsorted();
-            case ALPHA -> Sort.by(ALPHA.getColumnName());
-            case PRICE -> Sort.by(PRICE.getColumnName());
-        };
-        var pageable = PageRequest.of(pageNumber - 1, pageSize, sort);
+        var pageable = buildPageable(sortMethod, pageNumber, pageSize);
 
         return itemCacheService.getItemsPage(search, pageable)
-                .flatMap(itemsPage -> {
-                    var items = itemsPage.items();
-                    var itemsCount = itemsPage.itemsCount();
-
-                    Mono<Map<Long, Integer>> quantityForItemMono = items.isEmpty()
-                            ? Mono.just(Map.of())
-                            : cartItemRepository.findByItemIdIn(items.stream().map(ItemCacheDto::id).toList())
-                            .collectMap(CartItem::getItemId, CartItem::getQuantity);
-
-                    return quantityForItemMono.map(quantityForItem -> {
-                        log.debug("Fetched {} items, {} related cart items", items.size(), quantityForItem.size());
-                        var itemRows = ItemMapper.toItemRows(items, quantityForItem, ITEMS_IN_ROW);
-
-                        log.debug("Items response prepared with {} rows", itemRows.size());
-
-                        var paging = convertToPaging(items.size(), itemsCount, pageable);
-
-                        return new ItemsResponseDto(itemRows, search, sortMethod, paging);
-                    });
-                });
+                .flatMap(itemsPage ->
+                        buildItemsResponse(userIdOpt, search, sortMethod, pageable, itemsPage.items(), itemsPage.itemsCount()));
     }
 
+    /**
+     * Возвращает карточку товара и его текущее количество в корзине.
+     */
     @Override
     @Transactional(readOnly = true)
-    public Mono<ItemResponseDto> getItem(long id) {
-        log.debug("Request to fetch item with id={}", id);
+    public Mono<ItemResponseDto> getItem(Optional<Long> userIdOpt, long itemId) {
+        log.debug("Request to fetch item with itemId={}", itemId);
 
-        return itemCacheService.findItem(id)
+        return itemCacheService.findItem(itemId)
                 .flatMap(item ->
-                        cartItemRepository.findByItemId(id)
-                                .map(CartItem::getQuantity)
-                                .defaultIfEmpty(0)
+                        userIdOpt.map(userId ->
+                                        cartItemRepository.findByUserIdAndItemId(userId, itemId)
+                                                .map(CartItem::getQuantity)
+                                                .defaultIfEmpty(0)
+                                )
+                                .orElse(Mono.just(0))
                                 .map(itemQuantity -> ItemMapper.toItemResponseDto(item, itemQuantity))
-                                .doOnSuccess(r -> log.debug("Item {} has quantity {} in cart", id, r.count()))
+                                .doOnSuccess(r -> log.debug("Item {} has quantity {} in cart", itemId, r.count()))
                 );
     }
 
+    /**
+     * Возвращает корзину вместе с признаком доступности оплаты по текущему балансу.
+     */
     @Override
     @Transactional(readOnly = true)
-    public Mono<CartResponseDto> getCart() {
-        log.debug("Request to fetch cart");
+    public Mono<CartResponseDto> getCart(Long userId) {
+        log.debug("Request to fetch cart for userId={}", userId);
 
-        return cartItemRepository.findAll().collectList()
+        return cartItemRepository.findByUserId(userId).collectList()
                 .flatMap(cartItems -> {
-                    log.debug("Cart contains {} items", cartItems.size());
+                    log.debug("Cart contains {} items for userId={}", cartItems.size(), userId);
 
                     if (cartItems.isEmpty()) {
                         return Mono.just(new CartResponseDto(Collections.emptyList(), 0, false));
@@ -116,23 +107,27 @@ public class ItemServiceImpl implements ItemService {
 
 
                     var cartCacheMono = itemCacheService.getItemsByIds(itemIds);
-                    var currentBalanceMono = paymentAdapter.getBalance();
+                    var currentBalanceMono = paymentAdapter.getBalance(userId);
 
                     return Mono.zip(cartCacheMono, currentBalanceMono)
                             .map(t -> {
                                 var cartCache = t.getT1();
-                                var currentBalance = t.getT2().balance();
+                                var currentBalance = t.getT2().getBalance();
                                 return ItemMapper.toCart(cartItems, cartCache.items(), currentBalance);
                             });
                 });
     }
 
+    /**
+     * Возвращает корзину без проверки баланса во внешнем сервисе платежей.
+     */
     @Transactional(readOnly = true)
     @Override
-    public Mono<CartResponseDto> getCartWithoutPayments() {
+    public Mono<CartResponseDto> getCartWithoutPayments(long userId) {
         log.debug("Request to fetch cart");
 
-        return cartItemRepository.findAll().collectList()
+        return cartItemRepository.findByUserId(userId)
+                .collectList()
                 .flatMap(cartItems -> {
                     log.debug("Cart contains {} items", cartItems.size());
 
@@ -146,25 +141,31 @@ public class ItemServiceImpl implements ItemService {
                 });
     }
 
+    /**
+     * Обновляет количество товара в корзине по типу действия.
+     */
     @Override
     @Transactional
-    public Mono<Void> updateItemsCountInCart(long itemId, CartAction action) {
+    public Mono<Void> updateItemsCountInCart(long userId, long itemId, CartAction action) {
         log.debug("Updating cart for itemId={} with action={}", itemId, action);
         return switch (action) {
-            case PLUS -> incrementItemQuantityInCart(itemId);
-            case MINUS -> decrementItemQuantityInCart(itemId);
-            case DELETE -> deleteItemFromCart(itemId);
+            case PLUS -> incrementItemQuantityInCart(userId, itemId);
+            case MINUS -> decrementItemQuantityInCart(userId, itemId);
+            case DELETE -> deleteItemFromCart(userId, itemId);
         };
     }
 
-    private Mono<Void> incrementItemQuantityInCart(long itemId) {
+    /**
+     * Увеличивает количество товара в корзине на единицу.
+     */
+    private Mono<Void> incrementItemQuantityInCart(long userId, long itemId) {
         log.debug("Increment item {} in cart", itemId);
         return itemRepository.findById(itemId)
                 .switchIfEmpty(Mono.error(new ItemNotFoundException(itemId,
                         "Item with id = %d not found".formatted(itemId)))
                 )
-                .flatMap(exists -> cartItemRepository.findByItemId(itemId)
-                        .defaultIfEmpty(new CartItem(itemId))
+                .flatMap(exists -> cartItemRepository.findByUserIdAndItemId(userId, itemId)
+                        .defaultIfEmpty(new CartItem(userId, itemId))
                         .flatMap(ci -> {
                             ci.setQuantity(ci.getQuantity() + 1);
                             return cartItemRepository.save(ci);
@@ -176,9 +177,12 @@ public class ItemServiceImpl implements ItemService {
                 );
     }
 
-    private Mono<Void> decrementItemQuantityInCart(long itemId) {
+    /**
+     * Уменьшает количество товара в корзине на единицу либо удаляет позицию при количестве 1.
+     */
+    private Mono<Void> decrementItemQuantityInCart(long userId, long itemId) {
         log.debug("Decrement item {} in cart", itemId);
-        return cartItemRepository.findByItemId(itemId)
+        return cartItemRepository.findByUserIdAndItemId(userId, itemId)
                 .switchIfEmpty(
                         Mono.error(new CartItemNotFoundException(itemId, "Cart item with id = %d not found."
                                 .formatted(itemId)))
@@ -205,9 +209,12 @@ public class ItemServiceImpl implements ItemService {
 
     }
 
-    private Mono<Void> deleteItemFromCart(long itemId) {
+    /**
+     * Полностью удаляет товар из корзины.
+     */
+    private Mono<Void> deleteItemFromCart(long userId, long itemId) {
         log.debug("Deleting item {} from cart", itemId);
-        return cartItemRepository.findByItemId(itemId)
+        return cartItemRepository.findByUserIdAndItemId(userId, itemId)
                 .switchIfEmpty(Mono.error(
                         new CartItemNotFoundException(itemId, "Cart item with id = %d not found.".formatted(itemId)))
                 ).flatMap(ci ->
@@ -216,6 +223,9 @@ public class ItemServiceImpl implements ItemService {
                 );
     }
 
+    /**
+     * Возвращает retry-стратегию для конфликтов оптимистической блокировки.
+     */
     private RetrySpec getRetrySpec(long itemId) {
         return Retry
                 .max(3)
@@ -225,11 +235,62 @@ public class ItemServiceImpl implements ItemService {
                                 itemId, retrySignal.totalRetries() + 1));
     }
 
+    /**
+     * Формирует DTO пагинации для UI.
+     */
     private Paging convertToPaging(long itemsSize, long itemsCount, Pageable pageable) {
         var pageNumber = pageable.getPageNumber() + 1;
         var hasPreviousPage = pageNumber > 1;
         var hasNextPage = pageable.getOffset() + itemsSize < itemsCount;
+        log.debug("Paging calculated: pageNumber={}, pageSize={}, offset={}, itemsOnPage={}, itemsTotal={}, hasPrevious={}, hasNext={}",
+                pageNumber, pageable.getPageSize(), pageable.getOffset(), itemsSize, itemsCount, hasPreviousPage, hasNextPage);
 
         return new Paging(pageable.getPageSize(), pageNumber, hasPreviousPage, hasNextPage);
+    }
+
+    /**
+     * Создает параметры пагинации и сортировки.
+     */
+    private Pageable buildPageable(SortMethod sortMethod, int pageNumber, int pageSize) {
+        var sort = switch (sortMethod) {
+            case NO -> Sort.unsorted();
+            case ALPHA -> Sort.by(ALPHA.getColumnName());
+            case PRICE -> Sort.by(PRICE.getColumnName());
+        };
+        return PageRequest.of(pageNumber - 1, pageSize, sort);
+    }
+
+    /**
+     * Формирует DTO страницы товаров с учетом количеств в корзине.
+     */
+    private Mono<ItemsResponseDto> buildItemsResponse(
+            Optional<Long> userId,
+            String search,
+            SortMethod sortMethod,
+            Pageable pageable,
+            List<ItemCacheDto> items,
+            long itemsCount
+    ) {
+        return getQuantityForItems(userId, items)
+                .map(quantityForItem -> {
+                    log.debug("Fetched {} items, {} related cart items", items.size(), quantityForItem.size());
+                    var itemRows = ItemMapper.toItemRows(items, quantityForItem, ITEMS_IN_ROW);
+                    log.debug("Items response prepared with {} rows", itemRows.size());
+                    var paging = convertToPaging(items.size(), itemsCount, pageable);
+                    return new ItemsResponseDto(itemRows, search, sortMethod, paging);
+                });
+    }
+
+    /**
+     * Загружает количество товаров в корзине по списку элементов страницы.
+     */
+    private Mono<Map<Long, Integer>> getQuantityForItems(Optional<Long> userId, List<ItemCacheDto> items) {
+        if (items.isEmpty() || userId.isEmpty()) {
+            return Mono.just(Map.of());
+        }
+
+        var itemIds = items.stream().map(ItemCacheDto::id).toList();
+        return cartItemRepository.findByUserIdAndItemIdIn(userId.get(), itemIds)
+                .collectMap(CartItem::getItemId, CartItem::getQuantity);
     }
 }

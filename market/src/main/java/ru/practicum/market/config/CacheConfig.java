@@ -17,10 +17,16 @@ import java.util.Map;
 @Configuration
 public class CacheConfig {
 
+    /**
+     * Настраивает Redis CacheManager:
+     * - общий TTL для кэшей,
+     * - типизированную JSON-сериализацию значений по каждому cache name.
+     */
     @Bean
     public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer(
             @Value("${spring.cache.redis.time-to-live}") Duration ttl) {
 
+        // Кэш карточки товара.
         var itemCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(ttl)
                 .serializeValuesWith(
@@ -29,6 +35,7 @@ public class CacheConfig {
                         )
                 );
 
+        // Кэш страницы каталога товаров.
         var itemsPageCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(ttl)
                 .serializeValuesWith(
@@ -37,6 +44,7 @@ public class CacheConfig {
                         )
                 );
 
+        // Кэш содержимого корзины пользователя.
         var cartCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(ttl)
                 .serializeValuesWith(
@@ -49,8 +57,7 @@ public class CacheConfig {
                 Map.of(
                         "item", itemCacheConfiguration,
                         "items-page", itemsPageCacheConfiguration,
-                        "cart", cartCacheConfiguration
-                        )
+                        "cart", cartCacheConfiguration)
         );
     }
 }

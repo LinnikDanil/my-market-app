@@ -10,6 +10,9 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+/**
+ * Модель товара каталога.
+ */
 @Table(name = "items")
 @Getter
 @Setter

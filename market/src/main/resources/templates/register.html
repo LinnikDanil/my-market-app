@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .register-container {
+            max-width: 430px;
+        }
+
+        .alert-message {
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100 bg-light">
+<div class="container my-auto">
+    <div class="card shadow-sm register-container mx-auto">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4">Регистрация</h2>
+
+            <div th:if="${param.error != null && !param.error.isEmpty()}"
+                 class="alert-message alert-error"
+                 role="alert">
+                Не удалось зарегистрироваться. Проверьте данные и попробуйте снова.
+            </div>
+
+            <form th:action="@{/register}" method="post">
+                <th:block th:replace="~{fragments/csrf :: token}"></th:block>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Имя пользователя</label>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           class="form-control"
+                           placeholder="Введите имя пользователя"
+                           minlength="3"
+                           maxlength="100"
+                           required
+                           autofocus/>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Пароль</label>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="form-control"
+                           placeholder="Введите пароль"
+                           minlength="5"
+                           maxlength="100"
+                           required/>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+                    <a href="/login" class="btn btn-outline-secondary">У меня уже есть аккаунт</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,17 +1,15 @@
 package ru.practicum.market.domain.model;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 
+/**
+ * Модель заказа пользователя.
+ */
 @Table(name = "orders")
 @Getter
 @Setter
@@ -27,7 +25,17 @@ public class Order extends BaseEntity {
     @Column("created_at")
     LocalDateTime createdAt;
 
-    public Order(long totalSum) {
+    @Column("user_id")
+    long userId;
+
+    /**
+     * Создаёт заказ с пользователем и итоговой суммой.
+     *
+     * @param userId   идентификатор пользователя
+     * @param totalSum итоговая сумма заказа
+     */
+    public Order(long userId, long totalSum) {
+        this.userId = userId;
         this.totalSum = totalSum;
     }
 }

@@ -1,0 +1,69 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <changeSet id="create_user_roles_table" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <not>
+                <tableExists tableName="user_roles"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="user_roles">
+            <column name="user_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE user_roles ADD CONSTRAINT user_roles_primary_key PRIMARY KEY (user_id, role_id);
+        </sql>
+
+        <rollback>
+            <dropTable tableName="user_roles" cascadeConstraints="true"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create_user_roles_foreign_key_users" author="DLinnik">
+        <preConditions>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_user_roles_users"/>
+            </not>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="user_roles"
+                                 baseColumnNames="user_id"
+                                 constraintName="fk_user_roles_users"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="user_roles" constraintName="fk_user_roles_users"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create_user_roles_foreign_key_roles" author="DLinnik">
+        <preConditions>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_user_roles_roles"/>
+            </not>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="user_roles"
+                                 baseColumnNames="role_id"
+                                 constraintName="fk_user_roles_roles"
+                                 referencedTableName="roles"
+                                 referencedColumnNames="id"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="user_roles" constraintName="fk_user_roles_roles"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

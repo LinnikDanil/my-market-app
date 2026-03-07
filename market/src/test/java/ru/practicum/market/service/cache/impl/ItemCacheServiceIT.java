@@ -8,10 +8,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.practicum.market.config.TestOAuth2Config;
 import ru.practicum.market.domain.model.Item;
 import ru.practicum.market.repository.ItemRepository;
 import ru.practicum.market.service.cache.ItemCacheService;
@@ -30,6 +32,7 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers
 @ImportTestcontainers({RedisTestContainer.class, PostgresContainer.class})
+@Import(TestOAuth2Config.class)
 @DisplayName("ItemCacheServiceImpl")
 class ItemCacheServiceIT {
 

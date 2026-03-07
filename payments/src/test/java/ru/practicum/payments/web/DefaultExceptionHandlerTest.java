@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.server.ServerWebInputException;
 import ru.practicum.payments.exception.PaymentBalanceException;
 
@@ -75,6 +76,22 @@ class DefaultExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getCode()).isEqualTo("INSUFFICIENT_FUNDS");
+        }
+    }
+
+    @Nested
+    @DisplayName("accessDeniedException")
+    class AccessDeniedExceptionHandler {
+
+        @Test
+        @DisplayName("returns forbidden")
+        void test1() {
+            var response = handler.accessDeniedException(new AuthorizationDeniedException("Access Denied")).block();
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getCode()).isEqualTo(HttpStatus.FORBIDDEN.toString());
+            assertThat(response.getBody().getMessage()).isEqualTo("Access Denied");
         }
     }
 }

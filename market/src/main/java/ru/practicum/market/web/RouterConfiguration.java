@@ -6,23 +6,24 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import ru.practicum.market.web.handler.AdminHandler;
-import ru.practicum.market.web.handler.CartHandler;
-import ru.practicum.market.web.handler.ItemHandler;
-import ru.practicum.market.web.handler.OrderHandler;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
 import ru.practicum.market.web.filter.RouteLoggingFilter;
+import ru.practicum.market.web.handler.*;
 
 @Slf4j
 @Configuration
 public class RouterConfiguration {
 
+    /**
+     * Объединяет все маршруты приложения и подключает общие фильтры.
+     */
     @Bean
     public RouterFunction<ServerResponse> routes(
             RouterFunction<ServerResponse> itemRoutes,
             RouterFunction<ServerResponse> cartRoutes,
             RouterFunction<ServerResponse> orderRoutes,
             RouterFunction<ServerResponse> adminRoutes,
+            RouterFunction<ServerResponse> authRoutes,
             RouteLoggingFilter routeLoggingFilter,
             RouteExceptionFilter routeExceptionFilter
     ) {
@@ -30,10 +31,14 @@ public class RouterConfiguration {
                 .and(cartRoutes)
                 .and(orderRoutes)
                 .and(adminRoutes)
+                .and(authRoutes)
                 .filter(routeLoggingFilter.logging())
                 .filter(routeExceptionFilter.errors());
     }
 
+    /**
+     * Регистрирует маршруты каталога товаров.
+     */
     @Bean
     public RouterFunction<ServerResponse> itemRoutes(ItemHandler itemHandler) {
         return RouterFunctions.route()
@@ -47,6 +52,9 @@ public class RouterConfiguration {
                 .build();
     }
 
+    /**
+     * Регистрирует маршруты корзины.
+     */
     @Bean
     public RouterFunction<ServerResponse> cartRoutes(CartHandler cartHandler) {
         return RouterFunctions.route()
@@ -57,6 +65,9 @@ public class RouterConfiguration {
                 .build();
     }
 
+    /**
+     * Регистрирует маршруты заказов.
+     */
     @Bean
     public RouterFunction<ServerResponse> orderRoutes(OrderHandler orderHandler) {
         return RouterFunctions.route()
@@ -68,6 +79,9 @@ public class RouterConfiguration {
                 .build();
     }
 
+    /**
+     * Регистрирует административные маршруты.
+     */
     @Bean
     public RouterFunction<ServerResponse> adminRoutes(AdminHandler adminHandler) {
         return RouterFunctions.route()
@@ -78,6 +92,19 @@ public class RouterConfiguration {
                                 .POST("/{id}/image", adminHandler::uploadImage)
                         )
                 )
+                .build();
+    }
+
+    /**
+     * Регистрирует маршруты аутентификации.
+     */
+    @Bean
+    public RouterFunction<ServerResponse> authRoutes(AuthHandler authHandler) {
+        return RouterFunctions.route()
+                .GET("/login", authHandler::login)
+                .GET("/registerform", authHandler::registerForm)
+                .GET("/access-denied", authHandler::accessDenied)
+                .POST("/register", authHandler::register)
                 .build();
     }
 

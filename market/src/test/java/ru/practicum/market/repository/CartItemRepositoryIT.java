@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("CartItemRepository")
 @Import(TestCacheConfig.class)
 class CartItemRepositoryIT {
+    private static final long USER_ID = 1L;
+
 
     @Autowired
     private CartItemRepository cartItemRepository;
@@ -46,11 +48,12 @@ class CartItemRepositoryIT {
         var resultMono = itemRepository.save(item)
                 .flatMap(savedItem -> {
                     var cartItem = new CartItem();
+                    cartItem.setUserId(USER_ID);
                     cartItem.setItemId(savedItem.getId());
                     cartItem.setQuantity(quantity);
 
                     return cartItemRepository.save(cartItem)
-                            .then(cartItemRepository.findByItemId(savedItem.getId()));
+                            .then(cartItemRepository.findByUserIdAndItemId(USER_ID, savedItem.getId()));
                 });
 
         var result = resultMono.block();
@@ -69,7 +72,7 @@ class CartItemRepositoryIT {
                 .collectList()
                 .flatMap(savedItems -> {
                     var cartItems = savedItems.stream()
-                            .map(item -> TestDataFactory.createCartItem(item.getId(), quantity))
+                            .map(item -> TestDataFactory.createCartItem(USER_ID, item.getId(), quantity))
                             .toList();
                     var itemIds = savedItems.stream().map(item -> item.getId()).toList();
 

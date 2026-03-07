@@ -16,8 +16,9 @@
                     <h2>
                         <span class="badge text-bg-success">Админ-панель</span>
                     </h2>
-                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
+                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text" th:if="${authenticated}"> Заказы</a>
                     <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
+                    <th:block th:replace="~{fragments/logout :: button}"></th:block>
                 </div>
             </div>
         </div>
@@ -43,6 +44,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Загрузка товаров из Excel</h5>
                         <form th:action="@{/admin/items/upload}" method="post" enctype="multipart/form-data" class="vstack gap-3">
+                            <th:block th:replace="~{fragments/csrf :: token}"></th:block>
                             <div>
                                 <label for="itemsFile" class="form-label">Файл Excel</label>
                                 <input type="file" class="form-control" id="itemsFile" name="file" accept=".xlsx,.xls" required>
@@ -58,6 +60,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Загрузка изображения товара</h5>
                         <form th:action="@{/admin/items/{id}/image(id=${#lists.isEmpty(items) ? 0 : items.get(0).id})}" method="post" enctype="multipart/form-data" class="vstack gap-3">
+                            <th:block th:replace="~{fragments/csrf :: token}"></th:block>
                             <div>
                                 <label for="itemId" class="form-label">Товар</label>
                                 <select class="form-select" id="itemId" name="id" onchange="this.form.action='/admin/items/' + this.value + '/image'" th:disabled="${#lists.isEmpty(items)}" required>
