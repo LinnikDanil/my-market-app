@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import ru.practicum.market.integration.exception.PaymentIdNotFoundException;
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.service.OrderService;
 import ru.practicum.market.service.security.CurrentUserService;
@@ -148,5 +149,21 @@ class OrderHandlerTest {
                 .expectHeader().valueEquals("Location", "/orders/5?newOrder=true");
 
         verify(orderService, times(1)).createOrder(USER_ID);
+    }
+
+    @Test
+    @DisplayName("createOrder payment id not found returns 404")
+    void test4() {
+        when(userService.currentUserId(any())).thenReturn(Mono.just(USER_ID));
+        when(orderService.createOrder(USER_ID))
+                .thenReturn(Mono.error(new PaymentIdNotFoundException("payment not found")));
+
+        webTestClient.post()
+                .uri("/buy")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectHeader().contentType(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(html -> assertThat(html).contains("Не удалось выполнить оплату"));
     }
 }

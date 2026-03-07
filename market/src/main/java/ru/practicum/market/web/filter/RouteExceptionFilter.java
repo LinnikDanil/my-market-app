@@ -66,7 +66,7 @@ public class RouteExceptionFilter {
      */
     private Mono<ServerResponse> paymentNofFound(RuntimeException e, ServerRequest request) {
         logException(e);
-        return render(request, HttpStatus.SERVICE_UNAVAILABLE, "errors/payment-not-found", Map.of());
+        return render(request, HttpStatus.NOT_FOUND, "errors/payment-not-found", Map.of());
     }
 
     /**
