@@ -39,9 +39,14 @@ services:
     volumes:
       - ./images:/market-app/images
     depends_on:
-      - db
-      - redis
-      - payments-app
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      payments-app:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
 
   payments-app:
     container_name: payments-app
@@ -56,17 +61,23 @@ services:
       - SERVER_PORT=${PAYMENTS_SERVER_PORT}
     ports:
       - "8082:8082"
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
-    command: start-dev
+    command: ["start-dev", "--import-realm"]
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
     ports:
       - "8080:8080"
+    volumes:
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ready" ]
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
       interval: 10s
       timeout: 5s
       retries: 5

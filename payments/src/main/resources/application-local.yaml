@@ -1,6 +1,7 @@
 SERVER_PORT: 8082
 
 KEYCLOAK_ISSUER_URI: http://localhost:8080/realms/market-app
+KEYCLOAK_ROLES_CLIENT_ID: payments-service
 
 LOGGING_PRACTICUM_LEVEL: DEBUG
 

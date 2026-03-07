@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.unit.DataSize;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -31,11 +32,18 @@ import java.util.concurrent.TimeUnit;
 public class WebClientConfig {
 
     /**
-     * Создает WebClient для интеграции с сервисом платежей.
+     * Создает настроенный WebClient для интеграции с payments-сервисом.
+     * Включает:
+     * - connection pool,
+     * - сетевые timeout-ы,
+     * - OAuth2 client_credentials,
+     * - диагностическое логирование запросов/ответов.
      */
     @Bean
     public WebClient paymentsWebClient(
             @Value("${integration.payments.baseUrl}") String baseUrl,
+            @Value("${integration.payments.oauth2.registration-id}") String oauth2RegistrationId,
+            @Value("${integration.payments.web-client.max-in-memory-size}") DataSize maxInMemorySize,
             @Value("${integration.payments.web-client.pool.name}") String poolName,
             @Value("${integration.payments.web-client.pool.max-connections}") int maxConnections,
             @Value("${integration.payments.web-client.pool.pending-acquire-timeout}") Duration pendingAcquireTimeout,
@@ -62,24 +70,28 @@ public class WebClientConfig {
                         .addHandlerLast(new ReadTimeoutHandler(readTimeout.toMillis(), TimeUnit.MILLISECONDS))
                         .addHandlerLast(new WriteTimeoutHandler(writeTimeout.toMillis(), TimeUnit.MILLISECONDS)));
 
-        // Создаём функцию-фильтр для WebClient, которая будет автоматически
-        // запрашивать и прикреплять OAuth2-токены к каждому HTTP-запросу
+        // Фильтр автоматически получает access token и подставляет Authorization: Bearer <token>.
         var oauth2Client = new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
-        // Указываем ID регистрации OAuth2-клиента по умолчанию (должен совпадать с именем в application.yml)
-        oauth2Client.setDefaultClientRegistrationId("keycloak");
+        // ID регистрации клиента должен совпадать с spring.security.oauth2.client.registration.*.
+        oauth2Client.setDefaultClientRegistrationId(oauth2RegistrationId);
 
         return WebClient.builder()
+                // Базовый URL для всех запросов generated API-клиента в payments.
                 .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .filter(logRequest())
                 .filter(logResponse())
-                .filter(oauth2Client) // добавляем OAuth2-авторизацию ко всем запросам
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
+                .filter(oauth2Client)
+                // Лимит буфера на ответ; нужен для защиты от избыточного потребления памяти.
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(Math.toIntExact(maxInMemorySize.toBytes())))
                 .build();
     }
 
+    /**
+     * Создает типобезопасный API-клиент payments поверх общего WebClient.
+     */
     @Bean
     public DefaultApi paymentsApi(
             @Value("${integration.payments.baseUrl}") String baseUrl,
@@ -88,19 +100,23 @@ public class WebClientConfig {
         return new DefaultApi(apiClient);
     }
 
+    /**
+     * Менеджер OAuth2-клиентов для flow client_credentials.
+     * Отвечает за получение и переиспользование access token для межсервисных запросов.
+     */
     @Bean
     public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
             ReactiveClientRegistrationRepository clientRegistrations,
             ServerOAuth2AuthorizedClientRepository authorizedClients) {
-        // Создаём провайдера OAuth2-авторизованных клиентов, поддерживающего только flow client credentials
+        // Поддерживаем только machine-to-machine авторизацию.
         var authorizedClientProvider = ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
                 .clientCredentials()
                 .build();
-        // Создаём стандартный менеджер, который будет использовать переданные репозитории
+        // Используем стандартный менеджер Spring Security.
         var authorizedClientManager = new DefaultReactiveOAuth2AuthorizedClientManager(
-                // откуда брать настройки провайдера (client ID, secret, URL и т.д.)
+                // Источник client-id/secret/token-uri и остальных параметров провайдера.
                 clientRegistrations,
-                // куда кэшировать токены (в WebSession по умолчанию)
+                // Репозиторий хранения/кэширования токенов.
                 authorizedClients);
         authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
         return authorizedClientManager;

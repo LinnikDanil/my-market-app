@@ -23,3 +23,7 @@ logging:
   level:
     ru:
       practicum: ${LOGGING_PRACTICUM_LEVEL}
+
+security:
+  jwt:
+    roles-client-id: ${KEYCLOAK_ROLES_CLIENT_ID}

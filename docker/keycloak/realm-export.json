@@ -1,0 +1,83 @@
+{
+  "realm": "market-app",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "clients": [
+    {
+      "clientId": "payments-service",
+      "name": "payments-service",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "payments-service-secret",
+      "defaultClientScopes": [
+        "roles",
+        "profile",
+        "email"
+      ],
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "false"
+      }
+    },
+    {
+      "clientId": "market-service",
+      "name": "market-service",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "NAUYDbr59boHTAr3CzX1BXeXfc9T75lg",
+      "defaultClientScopes": [
+        "roles",
+        "profile",
+        "email"
+      ],
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "false"
+      }
+    }
+  ],
+  "roles": {
+    "client": {
+      "payments-service": [
+        {
+          "name": "SERVICE",
+          "description": "Allows access to payments resource server endpoints",
+          "clientRole": true,
+          "composite": false
+        }
+      ]
+    }
+  },
+  "users": [
+    {
+      "username": "service-account-market-service",
+      "enabled": true,
+      "serviceAccountClientId": "market-service",
+      "clientRoles": {
+        "payments-service": [
+          "SERVICE"
+        ]
+      }
+    }
+  ]
+}

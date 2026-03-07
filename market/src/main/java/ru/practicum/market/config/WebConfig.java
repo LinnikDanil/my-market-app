@@ -8,8 +8,15 @@ import org.springframework.web.reactive.config.WebFluxConfigurer;
 @Configuration
 public class WebConfig implements WebFluxConfigurer {
 
+    /**
+     * Абсолютный/относительный путь до директории изображений на файловой системе.
+     */
     @Value("${image.path}")
     private String imagePath;
+
+    /**
+     * URI-паттерн, по которому изображения доступны в приложении (например, /images/**).
+     */
     @Value("${image.resource-handler-pattern}")
     private String imageResourceHandlerPattern;
 
@@ -18,6 +25,7 @@ public class WebConfig implements WebFluxConfigurer {
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Маппинг URL -> локальная файловая директория.
         registry.addResourceHandler(imageResourceHandlerPattern)
                 .addResourceLocations("file:" + imagePath + "/");
     }
