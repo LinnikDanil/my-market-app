@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.web.server.csrf.WebSessionServerCsrfTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -19,6 +20,7 @@ import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.CartItemNotFoundException;
 import ru.practicum.market.domain.exception.ItemNotFoundException;
 import ru.practicum.market.service.ItemService;
+import ru.practicum.market.service.security.CurrentUserService;
 import ru.practicum.market.util.TestDataFactory;
 import ru.practicum.market.web.bind.QueryBinder;
 import ru.practicum.market.web.bind.model.ItemsQuery;
@@ -28,28 +30,53 @@ import ru.practicum.market.web.dto.enums.CartAction;
 import ru.practicum.market.web.dto.enums.SortMethod;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
 import ru.practicum.market.web.filter.RouteLoggingFilter;
+import ru.practicum.market.web.view.PageRenderHelper;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@WebFluxTest
-@Import({ItemHandlerTest.TestRoutes.class, ItemHandler.class, RouteLoggingFilter.class, RouteExceptionFilter.class})
+@WebFluxTest(excludeAutoConfiguration = {
+        org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientWebSecurityAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class
+})
+@Import({
+        ItemHandlerTest.TestRoutes.class,
+        ItemHandler.class,
+        RouteLoggingFilter.class,
+        RouteExceptionFilter.class,
+        PageRenderHelper.class
+})
 @DisplayName("ItemHandler")
 class ItemHandlerTest {
+
+    private static final long USER_ID = TestDataFactory.USER_ID;
 
     @Autowired
     private WebTestClient webTestClient;
 
     @MockitoBean
     private ItemService itemService;
+
     @MockitoBean
     private QueryBinder binder;
 
+    @MockitoBean
+    private CurrentUserService userService;
+
     @TestConfiguration
     static class TestRoutes {
+        @Bean
+        WebSessionServerCsrfTokenRepository csrfTokenRepository() {
+            return new WebSessionServerCsrfTokenRepository();
+        }
+
         @Bean
         RouterFunction<ServerResponse> routes(
                 ItemHandler itemHandler,
@@ -72,7 +99,7 @@ class ItemHandlerTest {
 
     @Nested
     @DisplayName("getItems")
-    class getItems {
+    class GetItems {
 
         @Test
         @DisplayName("ok")
@@ -88,7 +115,8 @@ class ItemHandlerTest {
 
             when(binder.bindItemsQuery(any(ServerRequest.class)))
                     .thenReturn(new ItemsQuery(search, sort, pageNumber, pageSize));
-            when(itemService.getItems(search, sort, pageNumber, pageSize))
+            when(userService.currentUserIdIfAuthenticated(any(ServerRequest.class))).thenReturn(Mono.empty());
+            when(itemService.getItems(Optional.empty(), search, sort, pageNumber, pageSize))
                     .thenReturn(Mono.just(itemsResponseDto));
 
             webTestClient.get()
@@ -115,7 +143,8 @@ class ItemHandlerTest {
 
             when(binder.bindItemsQuery(any(ServerRequest.class)))
                     .thenReturn(new ItemsQuery(search, sort, pageNumber, pageSize));
-            when(itemService.getItems(search, sort, pageNumber, pageSize))
+            when(userService.currentUserIdIfAuthenticated(any(ServerRequest.class))).thenReturn(Mono.just(USER_ID));
+            when(itemService.getItems(Optional.of(USER_ID), search, sort, pageNumber, pageSize))
                     .thenReturn(Mono.just(itemsResponseDto));
 
             webTestClient.get()
@@ -134,7 +163,7 @@ class ItemHandlerTest {
 
     @Nested
     @DisplayName("getItem")
-    class getItem {
+    class GetItem {
 
         @Test
         @DisplayName("ok")
@@ -143,10 +172,9 @@ class ItemHandlerTest {
             var quantity = 2;
             var itemResponseDto = TestDataFactory.createItemResponseDto(1L, quantity);
 
-            when(binder.bindPathVariableId(any(ServerRequest.class)))
-                    .thenReturn(itemId);
-            when(itemService.getItem(itemId))
-                    .thenReturn(Mono.just(itemResponseDto));
+            when(binder.bindPathVariableId(any(ServerRequest.class))).thenReturn(itemId);
+            when(userService.currentUserIdIfAuthenticated(any(ServerRequest.class))).thenReturn(Mono.empty());
+            when(itemService.getItem(Optional.empty(), itemId)).thenReturn(Mono.just(itemResponseDto));
 
             webTestClient.get()
                     .uri("/items/{itemId}", itemId)
@@ -164,9 +192,9 @@ class ItemHandlerTest {
         void test2() {
             var itemId = 1L;
 
-            when(binder.bindPathVariableId(any(ServerRequest.class)))
-                    .thenReturn(itemId);
-            when(itemService.getItem(itemId))
+            when(binder.bindPathVariableId(any(ServerRequest.class))).thenReturn(itemId);
+            when(userService.currentUserIdIfAuthenticated(any(ServerRequest.class))).thenReturn(Mono.just(USER_ID));
+            when(itemService.getItem(Optional.of(USER_ID), itemId))
                     .thenReturn(Mono.error(new ItemNotFoundException(
                             itemId,
                             "Item with id = %d not found.".formatted(itemId)
@@ -186,7 +214,7 @@ class ItemHandlerTest {
 
     @Nested
     @DisplayName("updateItemsCountInCartForItems")
-    class updateItemsCountInCartForItems {
+    class UpdateItemsCountInCartForItems {
 
         @Test
         @DisplayName("ok")
@@ -198,14 +226,12 @@ class ItemHandlerTest {
             var pageNumber = 1;
             var pageSize = 5;
 
-            when(binder.bindParamId(any(ServerRequest.class)))
-                    .thenReturn(itemId);
-            when(binder.bindParamAction(any(ServerRequest.class)))
-                    .thenReturn(action);
+            when(binder.bindParamId(any(ServerRequest.class))).thenReturn(itemId);
+            when(binder.bindParamAction(any(ServerRequest.class))).thenReturn(action);
             when(binder.bindItemsQuery(any(ServerRequest.class)))
                     .thenReturn(new ItemsQuery(search, sort, pageNumber, pageSize));
-            when(itemService.updateItemsCountInCart(userId, itemId, action))
-                    .thenReturn(Mono.empty());
+            when(userService.currentUserId(any(ServerRequest.class))).thenReturn(Mono.just(USER_ID));
+            when(itemService.updateItemsCountInCart(USER_ID, itemId, action)).thenReturn(Mono.empty());
 
             webTestClient.post()
                     .uri(uriBuilder -> uriBuilder
@@ -235,18 +261,17 @@ class ItemHandlerTest {
             var pageNumber = 1;
             var pageSize = 5;
 
-            when(itemService.updateItemsCountInCart(userId, itemId, action))
+            when(itemService.updateItemsCountInCart(USER_ID, itemId, action))
                     .thenReturn(Mono.error(new CartItemNotFoundException(
                             itemId,
                             "Cart item with id = %d not found.".formatted(itemId)
                     )));
 
-            when(binder.bindParamId(any(ServerRequest.class)))
-                    .thenReturn(itemId);
-            when(binder.bindParamAction(any(ServerRequest.class)))
-                    .thenReturn(action);
+            when(binder.bindParamId(any(ServerRequest.class))).thenReturn(itemId);
+            when(binder.bindParamAction(any(ServerRequest.class))).thenReturn(action);
             when(binder.bindItemsQuery(any(ServerRequest.class)))
                     .thenReturn(new ItemsQuery(search, sort, pageNumber, pageSize));
+            when(userService.currentUserId(any(ServerRequest.class))).thenReturn(Mono.just(USER_ID));
 
             webTestClient.post()
                     .uri(uriBuilder -> uriBuilder
@@ -270,7 +295,7 @@ class ItemHandlerTest {
 
     @Nested
     @DisplayName("updateItemsCountInCartForItem")
-    class updateItemsCountInCartForItem {
+    class UpdateItemsCountInCartForItem {
 
         @Test
         @DisplayName("ok")
@@ -280,14 +305,11 @@ class ItemHandlerTest {
             var itemResponseDto = TestDataFactory.createItemResponseDto(1L, quantity);
             var action = CartAction.PLUS;
 
-            when(binder.bindPathVariableId(any(ServerRequest.class)))
-                    .thenReturn(itemId);
-            when(binder.bindParamAction(any(ServerRequest.class)))
-                    .thenReturn(action);
-            when(itemService.updateItemsCountInCart(userId, itemId, action))
-                    .thenReturn(Mono.empty());
-            when(itemService.getItem(itemId))
-                    .thenReturn(Mono.just(itemResponseDto));
+            when(binder.bindPathVariableId(any(ServerRequest.class))).thenReturn(itemId);
+            when(binder.bindParamAction(any(ServerRequest.class))).thenReturn(action);
+            when(userService.currentUserId(any(ServerRequest.class))).thenReturn(Mono.just(USER_ID));
+            when(itemService.updateItemsCountInCart(USER_ID, itemId, action)).thenReturn(Mono.empty());
+            when(itemService.getItem(Optional.of(USER_ID), itemId)).thenReturn(Mono.just(itemResponseDto));
 
             webTestClient.post()
                     .uri(uriBuilder -> uriBuilder
@@ -309,16 +331,15 @@ class ItemHandlerTest {
             var itemId = 1L;
             var action = CartAction.PLUS;
 
-            when(itemService.updateItemsCountInCart(userId, itemId, action))
+            when(itemService.updateItemsCountInCart(USER_ID, itemId, action))
                     .thenReturn(Mono.error(new CartItemNotFoundException(
                             itemId,
                             "Cart item with id = %d not found.".formatted(itemId)
                     )));
 
-            when(binder.bindPathVariableId(any(ServerRequest.class)))
-                    .thenReturn(itemId);
-            when(binder.bindParamAction(any(ServerRequest.class)))
-                    .thenReturn(action);
+            when(binder.bindPathVariableId(any(ServerRequest.class))).thenReturn(itemId);
+            when(binder.bindParamAction(any(ServerRequest.class))).thenReturn(action);
+            when(userService.currentUserId(any(ServerRequest.class))).thenReturn(Mono.just(USER_ID));
 
             webTestClient.post()
                     .uri(uriBuilder -> uriBuilder

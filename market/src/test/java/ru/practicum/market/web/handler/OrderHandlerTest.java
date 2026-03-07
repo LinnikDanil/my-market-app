@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.web.server.csrf.WebSessionServerCsrfTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -17,11 +18,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.service.ItemService;
 import ru.practicum.market.service.OrderService;
+import ru.practicum.market.service.security.CurrentUserService;
 import ru.practicum.market.util.TestDataFactory;
 import ru.practicum.market.web.bind.QueryBinder;
 import ru.practicum.market.web.dto.OrderResponseDto;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
 import ru.practicum.market.web.filter.RouteLoggingFilter;
+import ru.practicum.market.web.view.PageRenderHelper;
 
 import java.util.List;
 
@@ -29,10 +32,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@WebFluxTest
-@Import({OrderHandlerTest.TestRoutes.class, OrderHandler.class, RouteLoggingFilter.class, RouteExceptionFilter.class})
+@WebFluxTest(excludeAutoConfiguration = {
+        org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientWebSecurityAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class
+})
+@Import({
+        OrderHandlerTest.TestRoutes.class,
+        OrderHandler.class,
+        RouteLoggingFilter.class,
+        RouteExceptionFilter.class,
+        PageRenderHelper.class
+})
 @DisplayName("OrderHandler")
 class OrderHandlerTest {
+
+    private static final long USER_ID = TestDataFactory.USER_ID;
 
     @Autowired
     private WebTestClient webTestClient;
@@ -46,8 +63,16 @@ class OrderHandlerTest {
     @MockitoBean
     private QueryBinder binder;
 
+    @MockitoBean
+    private CurrentUserService userService;
+
     @TestConfiguration
     static class TestRoutes {
+        @Bean
+        WebSessionServerCsrfTokenRepository csrfTokenRepository() {
+            return new WebSessionServerCsrfTokenRepository();
+        }
+
         @Bean
         RouterFunction<ServerResponse> routes(
                 OrderHandler orderHandler,
@@ -71,7 +96,9 @@ class OrderHandlerTest {
     void test1() {
         var orders = List.of(TestDataFactory.createOrderResponseDto(1L,
                 TestDataFactory.createItemResponseDtos(2), 400L));
-        when(orderService.getOrders(userId)).thenReturn(Flux.fromIterable(orders));
+
+        when(userService.currentUserId(any())).thenReturn(Mono.just(USER_ID));
+        when(orderService.getOrders(USER_ID)).thenReturn(Flux.fromIterable(orders));
 
         webTestClient.get()
                 .uri("/orders")
@@ -81,7 +108,7 @@ class OrderHandlerTest {
                 .expectBody(String.class)
                 .value(html -> assertThat(html).contains("title1"));
 
-        verify(orderService, times(1)).getOrders(userId);
+        verify(orderService, times(1)).getOrders(USER_ID);
     }
 
     @Test
@@ -89,9 +116,11 @@ class OrderHandlerTest {
     void test2() {
         var orderId = 2L;
         var order = new OrderResponseDto(orderId, TestDataFactory.createItemResponseDtos(1), 200L);
+
         when(binder.bindPathVariableId(any())).thenReturn(orderId);
         when(binder.bindParamNewOrder(any())).thenReturn(true);
-        when(orderService.getOrder(userId, orderId)).thenReturn(Mono.just(order));
+        when(userService.currentUserId(any())).thenReturn(Mono.just(USER_ID));
+        when(orderService.getOrder(USER_ID, orderId)).thenReturn(Mono.just(order));
 
         webTestClient.get()
                 .uri("/orders/{id}?newOrder=true", orderId)
@@ -101,14 +130,16 @@ class OrderHandlerTest {
                 .expectBody(String.class)
                 .value(html -> assertThat(html).contains("title1"));
 
-        verify(orderService, times(1)).getOrder(userId, orderId);
+        verify(orderService, times(1)).getOrder(USER_ID, orderId);
     }
 
     @Test
     @DisplayName("createOrder")
     void test3() {
         var orderId = 5L;
-        when(orderService.createOrder()).thenReturn(Mono.just(orderId));
+
+        when(userService.currentUserId(any())).thenReturn(Mono.just(USER_ID));
+        when(orderService.createOrder(USER_ID)).thenReturn(Mono.just(orderId));
 
         webTestClient.post()
                 .uri("/buy")
@@ -116,6 +147,6 @@ class OrderHandlerTest {
                 .expectStatus().isSeeOther()
                 .expectHeader().valueEquals("Location", "/orders/5?newOrder=true");
 
-        verify(orderService, times(1)).createOrder();
+        verify(orderService, times(1)).createOrder(USER_ID);
     }
 }
