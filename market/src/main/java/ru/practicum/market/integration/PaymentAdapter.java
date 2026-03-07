@@ -15,6 +15,7 @@ public interface PaymentAdapter {
     /**
      * Запрашивает текущий баланс.
      *
+     * @param userId идентификатор пользователя
      * @return DTO баланса
      */
     Mono<Balance> getBalance(long userId);
@@ -22,6 +23,7 @@ public interface PaymentAdapter {
     /**
      * Резервирует сумму (hold) под будущую оплату.
      *
+     * @param userId идентификатор пользователя
      * @param holdRq параметры резерва
      * @return идентификатор резерва
      */

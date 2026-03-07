@@ -9,12 +9,20 @@ import ru.practicum.market.service.cache.AppRoleCacheService;
 
 import java.util.Map;
 
+/**
+ * In-memory реализация кэш-сервиса ролей приложения.
+ */
 @Service
 @Slf4j
 public class AppRoleCacheServiceImpl implements AppRoleCacheService {
 
     private final Mono<Map<String, Long>> roleIdsByNameCache;
 
+    /**
+     * Создаёт сервис с ленивой загрузкой справочника ролей.
+     *
+     * @param roleRepository репозиторий ролей
+     */
     public AppRoleCacheServiceImpl(AppRoleRepository roleRepository) {
         this.roleIdsByNameCache = Mono.defer(() -> {
                     log.info("Loading app roles into in-memory cache");
@@ -24,8 +32,16 @@ public class AppRoleCacheServiceImpl implements AppRoleCacheService {
                 .cache();
     }
 
+    /**
+     * Возвращает идентификатор роли по имени.
+     *
+     * @param name имя роли
+     * @return идентификатор роли
+     */
     @Override
     public Mono<Long> getRoleIdByName(String name) {
-        return roleIdsByNameCache.flatMap(roleIds -> Mono.justOrEmpty(roleIds.get(name)));
+        return roleIdsByNameCache
+                .flatMap(roleIds -> Mono.justOrEmpty(roleIds.get(name)))
+                .doOnNext(roleId -> log.debug("Resolved role '{}' -> {}", name, roleId));
     }
 }

@@ -16,7 +16,7 @@ public interface ItemService {
     /**
      * Возвращает страницу товаров с фильтрацией, сортировкой и пагинацией.
      *
-     * @param userIdOpt
+     * @param userIdOpt  идентификатор пользователя, если пользователь аутентифицирован
      * @param search     строка поиска по товарам
      * @param sort       способ сортировки
      * @param pageNumber номер страницы (с 1)
@@ -28,7 +28,7 @@ public interface ItemService {
     /**
      * Возвращает карточку товара и текущее количество в корзине.
      *
-     * @param userIdOpt индентификатор пользователя
+     * @param userIdOpt идентификатор пользователя, если пользователь аутентифицирован
      * @param itemId    идентификатор товара
      * @return DTO карточки товара
      */
@@ -37,7 +37,7 @@ public interface ItemService {
     /**
      * Изменяет количество товара в корзине по указанному действию.
      *
-     * @param userId индентификатор пользователя
+     * @param userId идентификатор пользователя
      * @param itemId идентификатор товара
      * @param action действие над количеством
      * @return сигнал завершения операции
@@ -47,7 +47,7 @@ public interface ItemService {
     /**
      * Возвращает корзину с учетом текущего баланса пользователя.
      *
-     * @param userId индентификатор пользователя
+     * @param userId идентификатор пользователя
      * @return DTO корзины
      */
     Mono<CartResponseDto> getCart(Long userId);
@@ -55,6 +55,7 @@ public interface ItemService {
     /**
      * Возвращает корзину без обращения к платежному сервису.
      *
+     * @param userId идентификатор пользователя
      * @return DTO корзины
      */
     Mono<CartResponseDto> getCartWithoutPayments(long userId);

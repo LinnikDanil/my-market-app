@@ -4,6 +4,9 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.relational.core.mapping.Table;
 
+/**
+ * Модель пользователя приложения.
+ */
 @Table(name = "users")
 @Getter
 @Setter

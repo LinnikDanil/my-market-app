@@ -19,7 +19,7 @@ public interface OrderService {
     /**
      * Возвращает один заказ по идентификатору.
      *
-     * @param userId
+     * @param userId  идентификатор пользователя
      * @param orderId идентификатор заказа
      * @return DTO заказа
      */

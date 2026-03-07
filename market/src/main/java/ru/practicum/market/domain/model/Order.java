@@ -7,6 +7,9 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 
+/**
+ * Модель заказа пользователя.
+ */
 @Table(name = "orders")
 @Getter
 @Setter
@@ -25,6 +28,12 @@ public class Order extends BaseEntity {
     @Column("user_id")
     long userId;
 
+    /**
+     * Создаёт заказ с пользователем и итоговой суммой.
+     *
+     * @param userId   идентификатор пользователя
+     * @param totalSum итоговая сумма заказа
+     */
     public Order(long userId, long totalSum) {
         this.userId = userId;
         this.totalSum = totalSum;

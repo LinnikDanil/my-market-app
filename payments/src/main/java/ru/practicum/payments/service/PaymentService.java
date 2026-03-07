@@ -16,6 +16,7 @@ public interface PaymentService {
     /**
      * Возвращает текущий доступный баланс.
      *
+     * @param userId идентификатор пользователя
      * @return сумма баланса
      */
     Mono<BigDecimal> getBalance(Long userId);
@@ -23,7 +24,7 @@ public interface PaymentService {
     /**
      * Пополняет баланс на указанную сумму.
      *
-     * @param userId
+     * @param userId  идентификатор пользователя
      * @param payment запрос с суммой пополнения
      * @return сигнал завершения
      */
@@ -32,7 +33,7 @@ public interface PaymentService {
     /**
      * Резервирует сумму на оплату.
      *
-     * @param userId
+     * @param userId  идентификатор пользователя
      * @param payment запрос hold
      * @return результат hold с идентификатором
      */

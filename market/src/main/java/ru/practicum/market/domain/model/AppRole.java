@@ -4,6 +4,9 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.relational.core.mapping.Table;
 
+/**
+ * Модель роли пользователя.
+ */
 @Table(name = "roles")
 @Getter
 @Setter
