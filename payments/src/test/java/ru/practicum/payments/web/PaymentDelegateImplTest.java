@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PaymentDelegateImpl")
 class PaymentDelegateImplTest {
+    private static final Long USER_ID = 1L;
 
     @Mock
     private PaymentService paymentService;
@@ -40,9 +41,9 @@ class PaymentDelegateImplTest {
         @Test
         @DisplayName("ok")
         void test1() {
-            when(paymentService.getBalance()).thenReturn(Mono.just(BigDecimal.valueOf(700)));
+            when(paymentService.getBalance(USER_ID)).thenReturn(Mono.just(BigDecimal.valueOf(700)));
 
-            var response = paymentDelegate.getBalance(null).block();
+            var response = paymentDelegate.getBalance(USER_ID, null).block();
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(response.getBody()).isNotNull();
@@ -58,12 +59,12 @@ class PaymentDelegateImplTest {
         @DisplayName("ok")
         void test1() {
             var payment = new Payment().amount(BigDecimal.valueOf(150));
-            when(paymentService.replenishBalance(any())).thenReturn(Mono.empty());
+            when(paymentService.replenishBalance(eq(USER_ID), any())).thenReturn(Mono.empty());
 
-            ResponseEntity<Void> response = paymentDelegate.replenishBalance(Mono.just(payment), null).block();
+            ResponseEntity<Void> response = paymentDelegate.replenishBalance(USER_ID, Mono.just(payment), null).block();
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-            verify(paymentService).replenishBalance(any());
+            verify(paymentService).replenishBalance(eq(USER_ID), any());
         }
     }
 
@@ -76,9 +77,9 @@ class PaymentDelegateImplTest {
         void test1() {
             var holdRq = new HoldRq().amount(BigDecimal.valueOf(400));
             var holdRs = new HoldRs(UUID.randomUUID());
-            when(paymentService.holdPayment(any())).thenReturn(Mono.just(holdRs));
+            when(paymentService.holdPayment(eq(USER_ID), any())).thenReturn(Mono.just(holdRs));
 
-            var response = paymentDelegate.holdPayment(Mono.just(holdRq), null).block();
+            var response = paymentDelegate.holdPayment(USER_ID, Mono.just(holdRq), null).block();
 
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
             assertThat(response.getBody()).isNotNull();

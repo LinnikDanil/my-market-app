@@ -1,0 +1,40 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.liquibase.org/xml/ns/dbchangelog
+          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.17.xsd">
+
+    <!--  Тестовые данные  -->
+    <changeSet id="insert_test_users" author="DLinnik">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <tableExists tableName="users"/>
+            <tableExists tableName="roles"/>
+            <tableExists tableName="user_roles"/>
+        </preConditions>
+
+        <insert tableName="users">
+            <column name="username" value="user"/>
+            <column name="password" value="$2a$11$bUEuM9frL0iuDykRHopXSenXnqI8si4k8bpAWklH43WbYiaT9rsme"/> <!-- 2^11 -->
+        </insert>
+        <insert tableName="users">
+            <column name="username" value="admin"/>
+            <column name="password" value="$2a$11$VkkuNYwa8JGz8mYXC9vuleeaJ30bS8tcMlRpBFOO3K8j0ItTcO2dS"/> <!-- 2^11 -->
+        </insert>
+
+        <insert tableName="user_roles">
+            <column name="user_id" value="1"/>
+            <column name="role_id" value="1"/>
+        </insert>
+        <insert tableName="user_roles">
+            <column name="user_id" value="2"/>
+            <column name="role_id" value="2"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="users"/>
+            <delete tableName="user_roles"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

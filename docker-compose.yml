@@ -5,11 +5,12 @@ services:
     # образ, из которого должен быть запущен контейнер
     image: postgres:17.5
     restart: always
-    # переменные окружения
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=market
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5433:5432"
     # volume и связанная с ним директория в контейнере
@@ -29,33 +30,23 @@ services:
       dockerfile: Dockerfile
     image: market-app
     restart: on-failure
+    env_file:
+      - .env
     environment:
-      - SERVER_PORT=8080
-      - DATASOURCE_SCHEMA_NAME=public
-      - SPRING_R2DBC_URL=r2dbc:postgresql://db:5432/market
-      - SPRING_R2DBC_USERNAME=postgres
-      - SPRING_R2DBC_PASSWORD=postgres
-      - SPRING_LIQUIBASE_URL=jdbc:postgresql://db:5432/market
-      - SPRING_LIQUIBASE_USER=postgres
-      - SPRING_LIQUIBASE_PASSWORD=postgres
-      - LOGGING_PRACTICUM_LEVEL=DEBUG
-      - SPRING_WEBFLUX_MULTIPART_MAX_DISK_USAGE_PER_PART=10MB
-      - SPRING_WEBFLUX_MULTIPART_MAX_IN_MEMORY_SIZE=1MB
-      - SPRING_WEBFLUX_MULTIPART_MAX_PARTS=256
-      - SPRING_CODEC_MAX_IN_MEMORY_SIZE=2MB
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_TTL=PT1M
-      - IMAGE_PATH=/market-app/images
-      - PAYMENTS_BASE_URL=http://payments-app:8081
+      - SERVER_PORT=${MARKET_SERVER_PORT}
     ports:
-      - "8080:8080"
+      - "8081:8081"
     volumes:
       - ./images:/market-app/images
     depends_on:
-      - db
-      - redis
-      - payments-app
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      payments-app:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
 
   payments-app:
     container_name: payments-app
@@ -64,15 +55,32 @@ services:
       dockerfile: Dockerfile
     image: payments-app
     restart: on-failure
+    env_file:
+      - .env
     environment:
-      - SERVER_PORT=8081
-      - LOGGING_PRACTICUM_LEVEL=DEBUG
-      - SPRING_WEBFLUX_MULTIPART_MAX_DISK_USAGE_PER_PART=10MB
-      - SPRING_WEBFLUX_MULTIPART_MAX_IN_MEMORY_SIZE=1MB
-      - SPRING_WEBFLUX_MULTIPART_MAX_PARTS=256
-      - SPRING_CODEC_MAX_IN_MEMORY_SIZE=2MB
+      - SERVER_PORT=${PAYMENTS_SERVER_PORT}
     ports:
-      - "8081:8081"
+      - "8082:8082"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   db-data:

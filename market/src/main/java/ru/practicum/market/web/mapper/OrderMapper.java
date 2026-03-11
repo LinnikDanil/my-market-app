@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 @UtilityClass
 public class OrderMapper {
 
+    /**
+     * Преобразует список доменных заказов в DTO со всеми позициями.
+     */
     public static List<OrderResponseDto> toOrderResponseDtos(
             List<Order> orders,
             List<OrderItem> orderItems,
@@ -28,22 +31,31 @@ public class OrderMapper {
                 .toList();
     }
 
+    /**
+     * Преобразует один заказ в DTO.
+     */
     public static OrderResponseDto toOrderResponseDto(Order order, List<OrderItem> orderItems, List<Item> items) {
         var itemsById = groupItemsById(items);
 
         return createOrderResponseDto(order, orderItems, itemsById);
     }
 
-    public static Order toOrder(List<CartItem> cartItems, List<Item> items) {
+    /**
+     * Создает доменный заказ из корзины с вычислением общей суммы.
+     */
+    public static Order toOrder(long userId, List<CartItem> cartItems, List<Item> items) {
         var itemsById = groupItemsById(items);
 
         var totalSum = cartItems.stream()
                 .map(i -> i.getQuantity() * itemsById.get(i.getItemId()).getPrice())
                 .reduce(0L, Long::sum);
 
-        return new Order(totalSum);
+        return new Order(userId, totalSum);
     }
 
+    /**
+     * Создает список позиций заказа из корзины.
+     */
     public static List<OrderItem> toOrderItems(List<CartItem> cartItems, List<Item> items, long orderId) {
         var itemsById = groupItemsById(items);
 
@@ -59,6 +71,9 @@ public class OrderMapper {
                 .toList();
     }
 
+    /**
+     * Формирует DTO заказа из доменной модели и списка позиций.
+     */
     private static OrderResponseDto createOrderResponseDto(
             Order order,
             List<OrderItem> orderItems,
@@ -71,6 +86,9 @@ public class OrderMapper {
         );
     }
 
+    /**
+     * Преобразует позиции заказа в DTO товаров для ответа.
+     */
     private static List<ItemResponseDto> toItemResponseDtos(
             List<OrderItem> orderItems,
             Map<Long, Item> itemsById
@@ -90,6 +108,9 @@ public class OrderMapper {
                 .toList();
     }
 
+    /**
+     * Строит индекс товаров по id.
+     */
     private static Map<Long, Item> groupItemsById(List<Item> items) {
         return items.stream().collect(Collectors.toMap(Item::getId, item -> item));
     }

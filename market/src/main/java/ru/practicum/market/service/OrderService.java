@@ -4,10 +4,32 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.practicum.market.web.dto.OrderResponseDto;
 
+/**
+ * Сервис пользовательских сценариев работы с заказами.
+ */
 public interface OrderService {
-    Flux<OrderResponseDto> getOrders();
+    /**
+     * Возвращает список всех заказов.
+     *
+     * @param userId идентификатор пользователя
+     * @return поток заказов
+     */
+    Flux<OrderResponseDto> getOrders(long userId);
 
-    Mono<OrderResponseDto> getOrder(long id);
+    /**
+     * Возвращает один заказ по идентификатору.
+     *
+     * @param userId  идентификатор пользователя
+     * @param orderId идентификатор заказа
+     * @return DTO заказа
+     */
+    Mono<OrderResponseDto> getOrder(long userId, long orderId);
 
-    Mono<Long> createOrder();
+    /**
+     * Создает заказ из текущей корзины.
+     *
+     * @param userId идентификатор пользователя
+     * @return идентификатор созданного заказа
+     */
+    Mono<Long> createOrder(long userId);
 }

@@ -2,11 +2,17 @@ package ru.practicum.market.web.dto.enums;
 
 import lombok.Getter;
 
+/**
+ * Поддерживаемые режимы сортировки каталога.
+ */
 @Getter
 public enum SortMethod {
-    NO(null), // Без сортировки
-    ALPHA("title"), // По названию
-    PRICE("price"); // По цене
+    /** Без сортировки. */
+    NO(null),
+    /** Сортировка по названию. */
+    ALPHA("title"),
+    /** Сортировка по цене. */
+    PRICE("price");
 
     private final String columnName;
 

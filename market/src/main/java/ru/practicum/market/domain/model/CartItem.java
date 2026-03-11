@@ -1,11 +1,6 @@
 package ru.practicum.market.domain.model;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Column;
@@ -32,7 +27,11 @@ public class CartItem extends BaseEntity {
     @Version
     Long version;
 
-    public CartItem(Long itemId) {
+    @Column("user_id")
+    Long userId;
+
+    public CartItem(long userId, long itemId) {
+        this.userId = userId;
         this.itemId = itemId;
         this.quantity = 0;
     }

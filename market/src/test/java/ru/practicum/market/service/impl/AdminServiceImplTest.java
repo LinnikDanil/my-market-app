@@ -131,6 +131,7 @@ class AdminServiceImplTest {
             headers.setContentLength(10);
 
             ReflectionTestUtils.setField(adminService, "imagePath", tempDir.resolve("images").toString());
+            ReflectionTestUtils.setField(adminService, "imagePublicUriPrefix", "/images/");
             when(itemRepository.findById(itemId)).thenReturn(Mono.just(item));
             when(image.headers()).thenReturn(headers);
             when(image.filename()).thenReturn("image.png");

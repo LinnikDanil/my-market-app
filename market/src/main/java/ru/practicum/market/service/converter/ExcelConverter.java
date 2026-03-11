@@ -24,6 +24,9 @@ public class ExcelConverter {
     private static final String TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final String SHEET = "Items";
 
+    /**
+     * Проверяет, что загруженный файл имеет Excel MIME-тип.
+     */
     public void checkExcelFormat(FilePart file) {
         var contentType = file.headers().getContentType();
         if (contentType == null || !TYPE.equals(contentType.toString())) {
@@ -31,6 +34,9 @@ public class ExcelConverter {
         }
     }
 
+    /**
+     * Конвертирует Excel-файл в список товаров.
+     */
     public Mono<List<Item>> excelToItemList(FilePart file) {
         return DataBufferUtils.join(file.content())
                 .flatMap(dataBuffer -> Mono.fromCallable(() -> {
@@ -44,6 +50,9 @@ public class ExcelConverter {
                 );
     }
 
+    /**
+     * Парсит workbook и извлекает товары из листа {@value #SHEET}.
+     */
     private List<Item> parseWorkbook(InputStream is) {
         try (Workbook workbook = new XSSFWorkbook(is)) {
             var sheet = workbook.getSheet(SHEET);
@@ -83,6 +92,9 @@ public class ExcelConverter {
         }
     }
 
+    /**
+     * Строит карту индексов колонок по заголовкам первой строки.
+     */
     private Map<ExcelItemColumn, Integer> mapColumns(Row headerRow) {
         Map<ExcelItemColumn, Integer> map = new HashMap<>();
         for (Cell cell : headerRow) {
@@ -96,6 +108,9 @@ public class ExcelConverter {
         return map;
     }
 
+    /**
+     * Проверяет, что все обязательные колонки присутствуют.
+     */
     private void validateRequiredColumns(Map<ExcelItemColumn, Integer> columns) {
         for (ExcelItemColumn col : ExcelItemColumn.values()) {
             if (!columns.containsKey(col)) {
@@ -105,6 +120,9 @@ public class ExcelConverter {
         }
     }
 
+    /**
+     * Определяет, является ли строка Excel пустой.
+     */
     private boolean isRowEmpty(Row row) {
         if (row == null) return true;
         for (int i = row.getFirstCellNum(); i < row.getLastCellNum(); i++) {
@@ -116,11 +134,17 @@ public class ExcelConverter {
         return true;
     }
 
+    /**
+     * Читает строковую ячейку по индексу колонки.
+     */
     private String getStringCell(Row row, int columnIndex) {
         var cell = row.getCell(columnIndex);
         return cell == null ? null : cell.getStringCellValue();
     }
 
+    /**
+     * Читает числовую ячейку по индексу колонки.
+     */
     private double getNumericCell(Row row, int columnIndex) {
         var cell = row.getCell(columnIndex);
         if (cell == null) {

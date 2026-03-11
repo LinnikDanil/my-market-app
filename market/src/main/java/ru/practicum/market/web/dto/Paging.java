@@ -1,9 +1,17 @@
 package ru.practicum.market.web.dto;
 
+/**
+ * DTO пагинации списка товаров.
+ *
+ * @param pageSize    размер страницы
+ * @param pageNumber  номер текущей страницы (с 1)
+ * @param hasPrevious признак наличия предыдущей страницы
+ * @param hasNext     признак наличия следующей страницы
+ */
 public record Paging(
-        int pageSize, // Число товаров на странице
-        int pageNumber, // Номер страницы
-        boolean hasPrevious, // true, если не первая страница
-        boolean hasNext // true, если не последняя страница
+        int pageSize,
+        int pageNumber,
+        boolean hasPrevious,
+        boolean hasNext
 ) {
 }

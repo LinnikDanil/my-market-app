@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.security.web.server.csrf.WebSessionServerCsrfTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.util.MultiValueMap;
@@ -23,10 +24,12 @@ import reactor.core.publisher.Mono;
 import ru.practicum.market.domain.exception.ItemUploadException;
 import ru.practicum.market.service.AdminService;
 import ru.practicum.market.service.ItemService;
+import ru.practicum.market.service.security.CurrentUserService;
 import ru.practicum.market.web.bind.QueryBinder;
 import ru.practicum.market.web.dto.ItemShortResponseDto;
 import ru.practicum.market.web.filter.RouteExceptionFilter;
 import ru.practicum.market.web.filter.RouteLoggingFilter;
+import ru.practicum.market.web.view.PageRenderHelper;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -40,8 +43,20 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@WebFluxTest
-@Import({AdminHandlerTest.TestRoutes.class, AdminHandler.class, RouteLoggingFilter.class, RouteExceptionFilter.class})
+@WebFluxTest(excludeAutoConfiguration = {
+        org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientWebSecurityAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class
+})
+@Import({
+        AdminHandlerTest.TestRoutes.class,
+        AdminHandler.class,
+        RouteLoggingFilter.class,
+        RouteExceptionFilter.class,
+        PageRenderHelper.class
+})
 @DisplayName("AdminHandler")
 class AdminHandlerTest {
 
@@ -57,11 +72,19 @@ class AdminHandlerTest {
     @MockitoBean
     private QueryBinder binder;
 
+    @MockitoBean
+    private CurrentUserService userService;
+
     @TempDir
     Path tempDir;
 
     @TestConfiguration
     static class TestRoutes {
+        @Bean
+        WebSessionServerCsrfTokenRepository csrfTokenRepository() {
+            return new WebSessionServerCsrfTokenRepository();
+        }
+
         @Bean
         RouterFunction<ServerResponse> routes(
                 AdminHandler adminHandler,
